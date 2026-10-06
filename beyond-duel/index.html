@@ -1,0 +1,881 @@
+<title>ビヨンド・デュエル</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Shippori+Mincho+B1:wght@700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>
+/* Layout: one-screen battle table. Opponent above, player below, a brass seam between the two fields; log rail on wide screens. Deliberately single dark theme (a night table). */
+:root{
+  --bg:#13111b; --felt:#1b1828; --panel:#231f33; --panel2:#2b2640; --line:#3d3656; --fg:#f0ecf8; --muted:#a49cbb;
+  --brass:#d8b46a; --pp:#5bb9ee; --hp:#e2615c; --atk:#efa743; --heal:#62d39f; --sevo:#b68eff; --chip:#38314f;
+  --elf:#74c46b; --royal:#e3c34e; --dragon:#ec8642; --nemesis:#5ccad9; --neutral:#b8b1c9;
+  --f-display:'Shippori Mincho B1','Hiragino Mincho ProN','Yu Mincho',serif;
+  --f-body:'Zen Kaku Gothic New','Hiragino Sans','Yu Gothic',system-ui,sans-serif;
+  --f-num:'Barlow Condensed','Arial Narrow',sans-serif;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);margin:0;overflow:hidden;font-size:14px}
+button{font:inherit;color:inherit}
+button:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+#app{height:100%;overflow:hidden}
+
+/* ---------- title ---------- */
+.screen-title{height:100%;overflow-y:auto;padding-inline:16px;padding-block:28px 48px;
+  background:radial-gradient(1200px 500px at 80% -10%, #2a2142 0%, transparent 60%), var(--bg)}
+.title-wrap{max-width:1000px;margin:0 auto;display:grid;gap:28px}
+.eyebrow{font-size:11px;letter-spacing:.14em;color:var(--brass);margin:0 0 8px;font-weight:700}
+.logo{font-family:var(--f-display);font-weight:800;font-size:clamp(38px,8vw,72px);line-height:1;margin:0;letter-spacing:.02em;text-wrap:balance}
+.logo span{color:var(--brass)}
+.lede{max-width:62ch;color:var(--muted);line-height:1.8;margin:12px 0 0}
+h2.sec{font-family:var(--f-display);font-size:20px;margin:0 0 12px;display:flex;align-items:baseline;gap:10px}
+h2.sec small{font-family:var(--f-body);font-size:12px;color:var(--muted);font-weight:500}
+.deck-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.deck{all:unset;box-sizing:border-box;cursor:pointer;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;display:grid;gap:8px;position:relative;overflow:hidden;min-width:0}
+.deck::before{content:attr(data-glyph);position:absolute;right:-6px;top:-18px;font-family:var(--f-display);font-size:96px;font-weight:800;color:var(--clsc);opacity:.12;line-height:1}
+.deck[aria-pressed="true"]{border-color:var(--clsc);box-shadow:0 0 0 1px var(--clsc),0 10px 30px -12px var(--clsc)}
+.deck:focus-visible{outline:2px solid var(--brass)}
+.deck .dn{font-family:var(--f-display);font-weight:800;font-size:20px}
+.deck .dc{font-size:11px;color:var(--clsc);font-weight:700;letter-spacing:.08em}
+.deck .dd{color:var(--muted);font-size:13px;line-height:1.65}
+.deck .keys{display:flex;flex-wrap:wrap;gap:4px}
+.deck .keys i{font-style:normal;font-size:11px;background:var(--chip);padding:2px 6px;border-radius:4px}
+.tier{position:absolute;top:14px;right:14px;font-family:var(--f-num);font-weight:700;font-size:13px;letter-spacing:.06em;color:var(--brass);border:1px solid var(--brass);padding:0 6px;border-radius:4px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{all:unset;cursor:pointer;padding:7px 12px;border-radius:999px;border:1px solid var(--line);background:var(--panel);font-size:13px}
+.chip[aria-pressed="true"]{border-color:var(--brass);color:var(--brass)}
+.chip:focus-visible{outline:2px solid var(--brass)}
+.cta{display:flex;gap:10px;flex-wrap:wrap}
+.btn{cursor:pointer;border:1px solid var(--brass);background:var(--brass);color:#22190a;font-weight:700;padding:8px 14px;border-radius:8px;font-size:13px;white-space:nowrap}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.ghost{background:transparent;color:var(--fg);border-color:var(--line)}
+.btn.big{font-size:16px;padding:12px 26px}
+.btn.evo{background:transparent;border-color:var(--brass);color:var(--brass)}
+.btn.sevo{background:transparent;border-color:var(--sevo);color:var(--sevo)}
+.btn.xpp{background:transparent;border-color:var(--pp);color:var(--pp)}
+.decklist{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:2px 18px;font-size:13px}
+.decklist div{display:flex;gap:8px;align-items:baseline;padding:4px 0;border-bottom:1px solid var(--line);min-width:0}
+.decklist .c{font-family:var(--f-num);font-weight:700;color:var(--pp);width:18px;text-align:right;flex:none}
+.decklist .n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.decklist .x{color:var(--muted);font-family:var(--f-num);flex:none}
+.rulegrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.rulegrid div{background:var(--panel);padding:12px 14px}
+.rulegrid b{display:block;font-family:var(--f-num);font-size:26px;color:var(--brass);line-height:1.1}
+.rulegrid span{font-size:12px;color:var(--muted)}
+.note{font-size:12px;color:var(--muted);line-height:1.7;max-width:70ch;margin:0}
+
+/* ---------- game ---------- */
+.game{height:100%;display:grid;grid-template-columns:minmax(0,1fr) 300px;grid-template-rows:minmax(0,1fr)}
+.table{height:100%;min-height:0;display:grid;grid-template-rows:auto minmax(0,1fr) auto auto;gap:6px;padding-inline:16px;padding-block:8px;
+  background:radial-gradient(900px 420px at 50% 50%, #241e36 0%, transparent 70%),var(--felt)}
+.lbar{display:flex;align-items:center;gap:10px;min-width:0}
+.leader{position:relative;flex:none;width:56px;height:56px;border-radius:50%;border:2px solid var(--clsc);cursor:pointer;
+  background:radial-gradient(circle at 35% 30%, color-mix(in oklab,var(--clsc) 45%, var(--panel2)), var(--panel) 70%);display:grid;place-items:center;padding:0}
+.leader .glyph{position:absolute;font-family:var(--f-display);font-weight:800;font-size:30px;opacity:.12}
+.leader .hpv{position:relative;font-family:var(--f-num);font-weight:700;font-size:28px;line-height:1}
+.leader.low .hpv{color:var(--hp)}
+.lmeta{min-width:0;display:grid;gap:3px}
+.lname{font-weight:700;font-size:13px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.lname .cls{color:var(--clsc);font-size:11px}
+.tag{font-size:10px;border:1px solid var(--line);border-radius:4px;padding:0 4px;color:var(--muted);font-weight:500}
+.res{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center;font-size:12px;color:var(--muted)}
+.res b{color:var(--pp);font-family:var(--f-num);font-size:17px}
+.orbs{display:inline-flex;gap:2px;vertical-align:middle}
+.orb{width:8px;height:8px;border-radius:50%;border:1px solid var(--pp);opacity:.9}
+.orb.on{background:var(--pp)}
+.orb.x{border-color:#fff;background:#fff}
+.pips{display:inline-flex;gap:3px;vertical-align:middle}
+.pip{width:9px;height:9px;transform:rotate(45deg);border:1px solid currentColor}
+.pip.on{background:currentColor}
+.ep{color:var(--brass)} .sep{color:var(--sevo)}
+.locked{opacity:.45}
+.crests{display:flex;flex-wrap:wrap;gap:4px}
+.crest{font-size:10px;border:1px solid var(--brass);color:var(--brass);border-radius:4px;padding:1px 5px;cursor:help}
+.ohand{display:flex;gap:2px;margin-left:auto;flex:none}
+.ohand i{width:10px;height:15px;border-radius:2px;background:linear-gradient(135deg,var(--panel2),var(--line));border:1px solid var(--line)}
+
+.field{min-height:0;display:grid;grid-template-rows:minmax(0,1fr) auto minmax(0,1fr);gap:6px}
+.row{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;align-items:center;max-width:680px;width:100%;margin:0 auto;min-height:0}
+.slot{height:min(100%,148px);min-height:72px;border:1px dashed var(--line);border-radius:8px;opacity:.45}
+.unit{position:relative;height:min(100%,148px);min-height:72px;min-width:0;border-radius:8px;cursor:pointer;text-align:left;
+  background:linear-gradient(180deg,color-mix(in oklab,var(--clsc) 30%, var(--panel2)) 0%, var(--panel) 62%);
+  border:1.5px solid color-mix(in oklab,var(--clsc) 55%, var(--line));display:flex;flex-direction:column;padding:6px 5px 5px;gap:3px;transition:transform .15s}
+.unit .nm{font-family:var(--f-display);font-weight:700;font-size:11px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;word-break:break-all}
+.kws{display:flex;flex-wrap:wrap;gap:2px;margin-top:auto}
+.kw{font-style:normal;font-size:9px;line-height:1.4;padding:0 3px;border-radius:3px;background:var(--chip);color:var(--fg)}
+.kw.n{background:transparent;border:1px solid var(--line);color:var(--muted)}
+.stats{display:flex;justify-content:space-between;gap:2px}
+.atk,.hp{font-family:var(--f-num);font-weight:700;font-size:17px;min-width:22px;height:22px;padding:0 3px;display:grid;place-items:center;border-radius:5px;line-height:1;font-variant-numeric:tabular-nums}
+.atk{background:var(--atk);color:#231503}
+.hp{background:var(--hp);color:#200707}
+.hp.hurt{background:#f2b3ae}
+.buffed{box-shadow:inset 0 0 0 2px var(--heal)}
+.cdv{margin-top:auto;align-self:center;width:30px;height:30px;border-radius:50%;border:2px solid var(--brass);display:grid;place-items:center;font-family:var(--f-num);font-weight:700;font-size:18px;color:var(--brass)}
+.unit.amulet{border-style:dashed}
+.unit.evo{box-shadow:0 0 0 2px var(--brass)}
+.unit.sevo{box-shadow:0 0 0 2px var(--sevo),0 0 16px -2px var(--sevo)}
+.unit.ready{outline:2px solid var(--heal);outline-offset:2px}
+.unit.sel{transform:translateY(-5px);outline:2px solid var(--fg);outline-offset:2px}
+.unit.tgt,.leader.tgt{outline:2px dashed var(--hp);outline-offset:3px;animation:pulse 1s ease-in-out infinite}
+@keyframes pulse{50%{outline-color:transparent}}
+
+.mid{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:space-between;border-block:1px solid color-mix(in oklab,var(--brass) 45%, transparent);padding-block:5px}
+.turninfo{font-size:12px;color:var(--muted);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.turninfo b{color:var(--fg);font-family:var(--f-display);font-size:14px}
+.turninfo .mine{color:var(--brass)}
+.midbtns{display:flex;gap:6px;flex-wrap:wrap}
+.btn.end{min-width:110px}
+.btn.sm{padding:5px 9px;font-size:12px}
+.showlog{display:none}
+
+.abar{min-height:64px;max-height:128px;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 10px;display:flex;gap:10px;align-items:flex-start;justify-content:space-between}
+.abar .hint{color:var(--muted);font-size:12px;line-height:1.7;margin:0}
+.ab-card{min-width:0;flex:1}
+.ab-head{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ab-head b{font-family:var(--f-display);font-size:14px}
+.ab-head .meta{font-size:11px;color:var(--muted)}
+.ab-text{font-size:12px;line-height:1.65;margin-top:4px;color:#dcd6ea}
+.ab-text em{font-style:normal;color:var(--brass);font-weight:700}
+.ab-btns{display:flex;flex-direction:column;gap:6px;align-items:stretch;flex:none}
+.why{font-size:11px;color:var(--hp)}
+.costgem{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--pp);color:#04202f;font-family:var(--f-num);font-weight:700;font-size:15px;flex:none}
+
+.mybar{display:grid;gap:4px}
+.hand{display:flex;gap:8px;overflow-x:auto;overflow-y:hidden;padding:9px 4px 4px 8px;min-height:0}
+.hcard{flex:none;position:relative;width:76px;height:104px;border-radius:8px;cursor:pointer;padding:5px;text-align:left;display:flex;flex-direction:column;gap:2px;
+  background:linear-gradient(180deg,color-mix(in oklab,var(--clsc) 26%, var(--panel2)), var(--panel) 70%);border:1.5px solid var(--line);transition:transform .15s}
+.hcard .cost{position:absolute;top:-7px;left:-7px;width:22px;height:22px;border-radius:50%;background:var(--pp);color:#04202f;font-family:var(--f-num);font-weight:700;font-size:15px;display:grid;place-items:center;border:2px solid var(--felt)}
+.hcard .cost.enh{background:var(--brass);color:#22190a}
+.hcard .nm{margin-top:10px;font-family:var(--f-display);font-weight:700;font-size:10.5px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;word-break:break-all}
+.hcard .ty{font-size:9px;color:var(--muted);margin-top:auto}
+.hcard.can{border-color:var(--heal)}
+.hcard.sel{transform:translateY(-6px);border-color:var(--fg)}
+.rar{position:absolute;top:5px;right:5px;width:7px;height:7px;transform:rotate(45deg)}
+.r-B{background:#a77c55}.r-S{background:#c9ced8}.r-G{background:#e8c25a}.r-L{background:linear-gradient(135deg,#ff9ad0,#9ad7ff,#ffe48a)}
+.hand .empty{color:var(--muted);font-size:12px;align-self:center}
+
+.sidebar{background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0;padding-block:12px;padding-inline:14px;gap:10px}
+.sidebar h3{font-family:var(--f-display);font-size:15px;margin:0;display:flex;justify-content:space-between;align-items:center}
+.log{flex:1;min-height:0;overflow-y:auto;font-size:12px;line-height:1.6;display:flex;flex-direction:column;gap:2px;margin:0;padding:0;list-style:none}
+.log li{padding:3px 0;border-bottom:1px solid #2f2945;color:#d4cee2}
+.log li.t{color:var(--brass);font-weight:700;border-bottom-color:var(--line);padding-top:8px}
+.legend{font-size:11px;color:var(--muted);line-height:1.7;border-top:1px solid var(--line);padding-top:8px}
+.legend i{font-style:normal;color:var(--fg)}
+
+.fx{position:absolute;left:50%;top:38%;transform:translate(-50%,0);font-family:var(--f-num);font-weight:700;font-size:24px;pointer-events:none;animation:rise 1s ease-out forwards;text-shadow:0 2px 4px #000;z-index:5;white-space:nowrap}
+.fx-dmg{color:#ff8a83}.fx-heal{color:var(--heal)}.fx-buff{color:var(--heal);font-size:18px}.fx-imm{color:var(--sevo);font-size:15px}.fx-cd{color:var(--brass)}
+@keyframes rise{from{opacity:1;transform:translate(-50%,0)}to{opacity:0;transform:translate(-50%,-34px)}}
+
+.overlay{position:fixed;inset:0;background:rgba(9,7,15,.78);display:grid;place-items:center;z-index:50;padding:16px}
+.modal{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;max-width:680px;width:100%;max-height:calc(100% - 32px);overflow:auto;display:grid;gap:14px}
+.modal h2{font-family:var(--f-display);margin:0;font-size:24px}
+.modal p{margin:0;color:var(--muted);line-height:1.7}
+.mull{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.mcard{all:unset;box-sizing:border-box;cursor:pointer;width:120px;min-height:168px;border-radius:10px;padding:10px;position:relative;display:flex;flex-direction:column;gap:6px;
+  background:linear-gradient(180deg,color-mix(in oklab,var(--clsc) 30%, var(--panel2)), var(--panel) 70%);border:1.5px solid var(--line)}
+.mcard:focus-visible{outline:2px solid var(--brass)}
+.mcard .nm{font-family:var(--f-display);font-weight:700;font-size:13px;line-height:1.3}
+.mcard .tx{font-size:10.5px;color:var(--muted);line-height:1.5;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden}
+.mcard[aria-pressed="true"]{border-color:var(--hp)}
+.mcard[aria-pressed="true"]::after{content:'交換';position:absolute;inset:0;display:grid;place-items:center;background:rgba(20,10,14,.62);border-radius:10px;color:var(--hp);font-weight:700;font-size:18px;letter-spacing:.2em}
+.mcard .stats{margin-top:auto}
+.btnrow{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.result h2{font-size:56px;text-align:center;letter-spacing:.1em}
+.result.win h2{color:var(--brass)} .result.lose h2{color:var(--hp)}
+.result p{text-align:center}
+.rules ol{margin:0;padding-left:1.3em;display:grid;gap:8px;line-height:1.65;font-size:13px}
+.rules dl{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:13px;margin:0}
+.rules dt{color:var(--brass);font-weight:700}
+.rules dd{margin:0;color:#d4cee2}
+
+@media (max-width:900px){
+  .game{grid-template-columns:minmax(0,1fr)}
+  .sidebar{display:none}
+  .sidebar.open{display:flex;position:fixed;top:0;right:0;bottom:0;width:min(330px,88vw);z-index:40;box-shadow:-20px 0 40px rgba(0,0,0,.5);padding-top:calc(12px + env(safe-area-inset-top,0px))}
+  .showlog{display:inline-block}
+}
+@media (max-width:560px){
+  .row{gap:5px}
+  .unit{padding:4px 3px 3px}
+  .unit .nm{font-size:9.5px}
+  .atk,.hp{font-size:14px;min-width:18px;height:19px}
+  .leader{width:46px;height:46px}.leader .hpv{font-size:23px}
+  .hcard{width:68px;height:96px}
+  .abar{max-height:112px}
+  .turninfo .opt{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div id="app"></div>
+
+<script>
+'use strict';
+/* ================= util ================= */
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
+const pick=a=>a[Math.random()*a.length|0];
+const rnd=(a,k)=>shuffle([...a]).slice(0,k);
+const esc=s=>String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+
+const CLS={elf:{n:'エルフ',k:'森'},royal:{n:'ロイヤル',k:'剣'},dragon:{n:'ドラゴン',k:'竜'},nemesis:{n:'ネメシス',k:'機'},neutral:{n:'ニュートラル',k:'無'}};
+const KW={ward:'守護',storm:'疾走',rush:'突進',bane:'必殺',drain:'ドレイン',barrier:'バリア',intim:'威圧',aura:'オーラ'};
+const RAR={B:'ブロンズ',S:'シルバー',G:'ゴールド',L:'レジェンド'};
+const TY={F:'フォロワー',S:'スペル',A:'アミュレット'};
+const HAND_MAX=9, BOARD_MAX=5;
+
+/* ================= engine helpers ================= */
+let G=null, UID=0;
+const P=i=>G.p[i], E=i=>1-i, L=i=>G.p[i].leader;
+const foll=i=>G.p[i].board.filter(c=>c.d.t==='F');
+const efx=i=>foll(E(i)).filter(c=>!c.kw.has('aura'));
+const awake=i=>P(i).ppMax>=7;
+const onBoard=c=>!!c&&!c.isLeader&&P(c.owner).board.includes(c);
+const isLive=t=>!!t&&(t.isLeader||onBoard(t));
+function log(s,cls){G.log.unshift({s,cls});if(G.log.length>120)G.log.pop()}
+function fx(uid,text,kind){G.fx.push({uid,text,kind})}
+function ctxOf(c){return {i:c.owner,self:c,combo:P(c.owner).combo}}
+
+function damage(t,n){
+  if(n<=0||!isLive(t))return 0;
+  if(t.isLeader){const p=P(t.owner);p.hp-=n;fx(t.uid,'-'+n,'dmg');checkWin();return n}
+  if(t.sevo&&G.active===t.owner){fx(t.uid,'無効','imm');return 0}
+  if(t.kw.has('barrier')){t.kw.delete('barrier');fx(t.uid,'バリア','imm');log(`${t.name} のバリアがダメージを防いだ`);return 0}
+  t.hp-=n;fx(t.uid,'-'+n,'dmg');return n;
+}
+const tdmg=(x,n)=>{if(isLive(x.target))damage(x.target,n)};
+const dmgEach=(list,n)=>list.forEach(t=>damage(t,n));
+function heal(i,n){const p=P(i);const v=Math.min(n,p.maxHp-p.hp);if(v>0){p.hp+=v;fx(L(i).uid,'+'+v,'heal')}return v}
+function ramp(i,n){const p=P(i);const v=Math.min(n,10-p.ppMax);p.ppMax+=v;if(v)log(`${p.name} のPP最大値+${v}`)}
+function rec(i,n){const p=P(i);p.pp=Math.min(p.ppMax,p.pp+n);log(`${p.name} のPPを${n}回復`)}
+function buff(c,a,h){if(!onBoard(c))return;c.atk+=a;c.hp+=h;c.maxHp+=h;fx(c.uid,`+${a}/+${h}`,'buff')}
+function destroy(c){if(!onBoard(c))return;if(c.sevo&&G.active===c.owner){fx(c.uid,'無効','imm');return}c.dead=true}
+function banish(c){if(!onBoard(c))return;if(c.sevo&&G.active===c.owner){fx(c.uid,'無効','imm');return}const b=P(c.owner).board;b.splice(b.indexOf(c),1);log(`${c.name} は消滅した`)}
+function cdown(c,n){if(c.cd==null)return;c.cd=Math.max(0,c.cd-n);fx(c.uid,'-'+n,'cd')}
+const flags=i=>P(i).board.filter(c=>c.name==='戦慄の海賊旗');
+function toHand(i,c){const p=P(i);if(p.hand.length>=HAND_MAX){p.grave++;log(`${p.name} の手札がいっぱいで「${c.name}」は破棄された`);return}p.hand.push(c)}
+function add(i,n,k=1){for(let j=0;j<k;j++)toHand(i,inst(n,i))}
+function summon(i,n,k=1){const p=P(i);for(let j=0;j<k;j++){if(p.board.length>=BOARD_MAX){log(`場がいっぱいで「${n}」を出せなかった`);break}const c=inst(n,i);c.newly=true;p.board.push(c)}}
+function tutor(i,f){const p=P(i);const m=p.deck.filter(f);if(!m.length)return;const c=pick(m);p.deck.splice(p.deck.indexOf(c),1);toHand(i,c);log(`${p.name} はデッキからカードを1枚引いた`)}
+function draw(i,n){const p=P(i);for(let k=0;k<n;k++){if(G.over)return;if(!p.deck.length){G.over={winner:E(i),reason:`${p.name} の山札が尽きた`};log(`${p.name} は山札が尽きた`);return}toHand(i,p.deck.pop())}}
+function gainCrest(i,cr){const p=P(i);if(p.crests.some(c=>c.name===cr.name)){const ex=p.crests.find(c=>c.name===cr.name);if(cr.cd!=null)ex.cd=cr.cd;return}p.crests.push(cr);log(`${p.name} は『クレスト：${cr.name}』を得た`)}
+
+/* ================= card database ================= */
+const DB={};
+function C(d){d.kw=d.kw||[];d.r=d.r||'B';d.tx=d.tx||'';DB[d.n]=d}
+function inst(name,owner){const d=DB[name];if(!d)throw new Error('unknown card '+name);
+  return {uid:'c'+(++UID),name,d,owner,cost:d.cost,atk:d.a||0,hp:d.h||0,maxHp:d.h||0,kw:new Set(d.kw),evolved:false,sevo:false,newly:false,attacked:false,cd:d.cd}}
+
+/* ---- Neutral ---- */
+C({n:'空の命運を握る少女・ルリア',c:'neutral',t:'F',cost:2,a:1,h:2,r:'G',kw:['barrier'],
+  tx:'【エンハンス_8】自分のデッキからコスト7以上のフォロワーを1枚引き、自分のPPを7回復。',
+  enh:{n:8,fn:x=>{tutor(x.i,c=>c.d.t==='F'&&c.cost>=7);rec(x.i,7)}}});
+C({n:'律する《正義》・イランツァ',c:'neutral',t:'F',cost:9,a:5,h:5,r:'L',kw:['ward'],
+  tx:'自分のターン終了時、これが進化前なら、相手の場のフォロワーからランダムに2体に8ダメージを与え、自分のリーダーを8回復。進化後なら、相手のリーダーに8ダメージ。\n【進化時】これは【守護】を失い、【威圧】を持つ。',
+  onEnd:x=>{if(!x.self.evolved){dmgEach(rnd(foll(E(x.i)),2),8);heal(x.i,8)}else damage(L(E(x.i)),8)},
+  evo:x=>{x.self.kw.delete('ward');x.self.kw.add('intim')}});
+C({n:'ゴブリン',c:'neutral',t:'F',cost:1,a:1,h:2});
+C({n:'ファイター',c:'neutral',t:'F',cost:2,a:2,h:2});
+C({n:'ハムサ',c:'neutral',t:'F',cost:2,a:2,h:1,kw:['rush']});
+C({n:'ゴリアテ',c:'neutral',t:'F',cost:3,a:2,h:4});
+C({n:'ヒーリングエンジェル',c:'neutral',t:'F',cost:3,a:2,h:3,tx:'【ファンファーレ】自分のリーダーを2回復。',ff:x=>heal(x.i,2)});
+C({n:'エンジェルスナイプ',c:'neutral',t:'S',cost:1,tgt:'ef',ai:{dmg:2},tx:'相手のフォロワー1体に2ダメージ。',sp:x=>tdmg(x,2)});
+C({n:'エンジェルバレッジ',c:'neutral',t:'S',cost:2,tx:'相手のフォロワーすべてに1ダメージ。',sp:x=>dmgEach(foll(E(x.i)),1)});
+C({n:'天界の守護者',c:'neutral',t:'F',cost:4,a:2,h:5,kw:['ward']});
+C({n:'ミノタウロス',c:'neutral',t:'F',cost:4,a:4,h:3,kw:['rush']});
+C({n:'メカゴブリン',c:'neutral',t:'F',cost:4,a:4,h:4});
+C({n:'ガブリエル',c:'neutral',t:'F',cost:5,a:3,h:4,r:'L',tgt:'af',ai:{buff:1},tx:'【ファンファーレ】自分の他のフォロワー1体を+3/+2し、【守護】を持たせる。',
+  ff:x=>{if(isLive(x.target)){buff(x.target,3,2);x.target.kw.add('ward')}}});
+C({n:'ペガサス',c:'neutral',t:'F',cost:6,a:5,h:4,r:'S',tx:'【ファンファーレ】カードを1枚引く。',ff:x=>draw(x.i,1)});
+C({n:'ルシフェル',c:'neutral',t:'F',cost:6,a:4,h:6,r:'L',tx:'自分のターン終了時、自分のリーダーを2回復。',onEnd:x=>heal(x.i,2)});
+C({n:'ダークエンジェル・オリヴィエ',c:'neutral',t:'F',cost:8,a:4,h:4,r:'L',tx:'【ファンファーレ】自分の他のフォロワーすべてを+2/+2。',ff:x=>foll(x.i).filter(c=>c!==x.self).forEach(c=>buff(c,2,2))});
+C({n:'ゼウス',c:'neutral',t:'F',cost:10,a:5,h:5,r:'L',kw:['storm','ward','drain']});
+C({n:'バハムート',c:'neutral',t:'F',cost:10,a:13,h:13,r:'L',tx:'【ファンファーレ】これ以外の場のフォロワーとアミュレットをすべて破壊する。',
+  ff:x=>G.p.forEach(p=>p.board.forEach(c=>{if(c!==x.self)destroy(c)}))});
+
+/* ---- Dragon ---- */
+C({n:'竜の啓示',c:'dragon',t:'S',cost:2,tx:'自分のPP最大値+1。【覚醒】ならカードを1枚引く。',sp:x=>{ramp(x.i,1);if(awake(x.i))draw(x.i,1)}});
+C({n:'旧き天刀・ヴォーラライ',c:'dragon',t:'F',cost:2,a:2,h:2,r:'S',tgt:'ef',ai:{dmg:i=>awake(i)?4:1},
+  tx:'【ファンファーレ】相手のフォロワー1体に1ダメージ。【覚醒】なら代わりに4ダメージ。',ff:x=>tdmg(x,awake(x.i)?4:1)});
+C({n:'怠惰なる波揺花',c:'dragon',t:'F',cost:2,a:0,h:3,kw:['ward'],tx:'【ラストワード】カードを1枚引く。',lw:x=>draw(x.i,1)});
+C({n:'喧伝の龍人',c:'dragon',t:'F',cost:3,a:2,h:3,tx:'【ファンファーレ】自分のPP最大値+1。',ff:x=>ramp(x.i,1)});
+C({n:'笑顔の調理・キミカ',c:'dragon',t:'F',cost:3,a:2,h:3,r:'S',tx:'【ファンファーレ】自分のリーダーを3回復し、カードを1枚引く。',ff:x=>{heal(x.i,3);draw(x.i,1)}});
+C({n:'ドラゴンブレス',c:'dragon',t:'S',cost:2,tgt:'ef',ai:{dmg:3},tx:'相手のフォロワー1体に3ダメージ。',sp:x=>tdmg(x,3)});
+C({n:'竜鱗の守り手',c:'dragon',t:'F',cost:4,a:3,h:5,kw:['ward'],tx:'【ファンファーレ】【覚醒】なら+2/+2。',ff:x=>{if(awake(x.i))buff(x.self,2,2)}});
+C({n:'断頭の斬姫・サガツマツ',c:'dragon',t:'F',cost:5,a:4,h:4,r:'L',kw:['rush'],tgt:'ef',ai:{dmg:5},etgt:'ef',eai:{kill:1},
+  tx:'【ファンファーレ】相手のフォロワー1体に5ダメージ。\n【進化時】相手のフォロワー1体を破壊する。',ff:x=>tdmg(x,5),evo:x=>{if(isLive(x.target))destroy(x.target)}});
+C({n:'金銀絢爛・リュミオール＆アルジャンテ',c:'dragon',t:'F',cost:6,a:4,h:4,r:'L',kw:['storm','barrier'],tx:'【進化時】相手のリーダーに2ダメージ。',evo:x=>damage(L(E(x.i)),2)});
+C({n:'禁牙の変貌・ノマグダラ',c:'dragon',t:'F',cost:7,a:6,h:6,r:'L',tx:'【ファンファーレ】相手のフォロワーすべてに3ダメージ。\n【超進化時】相手のリーダーに4ダメージ。',
+  ff:x=>dmgEach(foll(E(x.i)),3),sevo:x=>damage(L(E(x.i)),4)});
+C({n:'焦灰のアナテマ・バーンドナイト',c:'dragon',t:'F',cost:8,a:6,h:6,r:'L',kw:['storm'],tx:'【ファンファーレ】相手のリーダーに2ダメージ。\n【進化時】自分のリーダーを4回復。',
+  ff:x=>damage(L(E(x.i)),2),evo:x=>heal(x.i,4)});
+
+/* ---- Elf ---- */
+C({n:'フェアリー',c:'elf',t:'F',cost:1,a:1,h:1,tok:1});
+C({n:'森の神秘',c:'elf',t:'S',cost:1,tok:1,tgt:'ef',ai:{dmg:1},tx:'相手のフォロワー1体に1ダメージ。カードを1枚引く。',sp:x=>{tdmg(x,1);draw(x.i,1)}});
+C({n:'燐光の岩',c:'elf',t:'F',cost:1,a:0,h:2,combo:3,tx:'【ファンファーレ】『フェアリー』1枚を自分の手札に加える。【コンボ_3】『森の神秘』1枚を自分の手札に加える。',
+  ff:x=>{add(x.i,'フェアリー');if(x.combo>=3)add(x.i,'森の神秘')}});
+C({n:'フェアリーテイマー',c:'elf',t:'F',cost:2,a:1,h:2,tx:'【ファンファーレ】『フェアリー』2枚を自分の手札に加える。',ff:x=>add(x.i,'フェアリー',2)});
+C({n:'舞い踊る妖精',c:'elf',t:'F',cost:2,a:2,h:2,combo:3,tx:'【ファンファーレ】【コンボ_3】自分の場の他のフォロワーすべてを+1/+1。',
+  ff:x=>{if(x.combo>=3)foll(x.i).filter(c=>c!==x.self).forEach(c=>buff(c,1,1))}});
+C({n:'リノセウス',c:'elf',t:'F',cost:2,a:1,h:1,r:'G',kw:['storm'],combo:2,tx:'【ファンファーレ】このターン中にこれ以外にプレイしたカード1枚につき+1/+0。',
+  ff:x=>{if(x.combo>1)buff(x.self,x.combo-1,0)}});
+C({n:'フェアリーサークル',c:'elf',t:'S',cost:1,tx:'『フェアリー』2枚を自分の手札に加える。',sp:x=>add(x.i,'フェアリー',2)});
+C({n:'フェアリーの祝福',c:'elf',t:'S',cost:1,tgt:'af',ai:{buff:1},tx:'自分のフォロワー1体を+1/+1。カードを1枚引く。',sp:x=>{if(isLive(x.target))buff(x.target,1,1);draw(x.i,1)}});
+C({n:'ソーンバースト',c:'elf',t:'S',cost:2,tgt:'ef',combo:3,ai:{dmg:i=>P(i).combo+1>=3?4:2},tx:'相手のフォロワー1体に2ダメージ。【コンボ_3】代わりに4ダメージ。',sp:x=>tdmg(x,x.combo>=3?4:2)});
+C({n:'森の神託',c:'elf',t:'S',cost:2,tx:'カードを2枚引く。',sp:x=>draw(x.i,2)});
+C({n:'翠緑の射手',c:'elf',t:'F',cost:3,a:2,h:3,tgt:'ef',combo:3,ai:{dmg:i=>P(i).combo+1>=3?3:1},
+  tx:'【ファンファーレ】相手のフォロワー1体に1ダメージ。【コンボ_3】代わりに3ダメージ。',ff:x=>tdmg(x,x.combo>=3?3:1)});
+C({n:'操嵩のアナテマ・ダストデイズ',c:'elf',t:'F',cost:4,a:3,h:3,r:'L',tgt:'ef',ai:{dmg:3},
+  tx:'【ファンファーレ】相手のフォロワー1体を-0/-X（Xはこれの攻撃力）。自分のコンボ+1。\n【進化時】『クレスト：操嵩のアナテマ・ダストデイズ』を得る。\nクレスト【カウントダウン_3】：自分のターン終了時、【コンボ_3】なら自分のデッキのフォロワーすべてを+1/+1。',
+  ff:x=>{if(isLive(x.target)){const v=x.self.atk;x.target.hp-=v;x.target.maxHp=Math.max(0,x.target.maxHp-v);fx(x.target.uid,'-0/-'+v,'dmg')}P(x.i).combo++},
+  evo:x=>gainCrest(x.i,{name:'操嵩のアナテマ・ダストデイズ',cd:3,desc:'自分のターン終了時、コンボ3以上ならデッキのフォロワーすべて+1/+1',
+    onEnd:i=>{const p=P(i);if(p.combo>=3){p.deck.forEach(c=>{if(c.d.t==='F'){c.atk++;c.hp++;c.maxHp++}});log('クレスト発動：デッキのフォロワーすべてが+1/+1')}}})});
+C({n:'大樹の守護者',c:'elf',t:'F',cost:4,a:3,h:5,kw:['ward'],combo:4,tx:'【ファンファーレ】【コンボ_4】+2/+2。',ff:x=>{if(x.combo>=4)buff(x.self,2,2)}});
+C({n:'クリスタリア・イヴ',c:'elf',t:'F',cost:5,a:4,h:4,r:'L',tgt:'ef',combo:3,ai:{dmg:4},tx:'【ファンファーレ】自分のリーダーを3回復。【コンボ_3】相手のフォロワー1体に4ダメージ。',
+  ff:x=>{heal(x.i,3);if(x.combo>=3)tdmg(x,4)}});
+C({n:'森の女王',c:'elf',t:'F',cost:6,a:4,h:5,r:'G',combo:1,tx:'【ファンファーレ】このターン中に自分がプレイしたカード1枚につき（これを含む）、相手のリーダーに1ダメージ。',
+  ff:x=>damage(L(E(x.i)),x.combo)});
+
+/* ---- Royal ---- */
+C({n:'戦慄の海賊旗',c:'royal',t:'A',cost:2,cd:7,tok:1,tx:'【カウントダウン_7】\n自分がスペルをプレイするたび、これのカウント-1。\n【ラストワード】相手のリーダーに2ダメージ。',
+  onSpell:x=>cdown(x.self,1),lw:x=>damage(L(E(x.i)),2)});
+C({n:'クイックブレーダー',c:'royal',t:'F',cost:1,a:1,h:1,kw:['storm']});
+C({n:'海賊の斥候',c:'royal',t:'F',cost:1,a:1,h:2,tx:'【ファンファーレ】自分の場の『戦慄の海賊旗』すべてのカウント-1。',ff:x=>flags(x.i).forEach(f=>cdown(f,1))});
+C({n:'見習い海賊',c:'royal',t:'F',cost:2,a:2,h:2,tx:'【ファンファーレ】『戦慄の海賊旗』1つを自分の場に出す。',ff:x=>summon(x.i,'戦慄の海賊旗')});
+C({n:'船長の号令',c:'royal',t:'S',cost:1,tx:'カードを1枚引く。',sp:x=>draw(x.i,1)});
+C({n:'砲撃',c:'royal',t:'S',cost:2,tgt:'ef',ai:{dmg:3},tx:'相手のフォロワー1体に3ダメージ。',sp:x=>tdmg(x,3)});
+C({n:'突撃命令',c:'royal',t:'S',cost:2,tgt:'af',ai:{buff:1},tx:'自分のフォロワー1体を+2/+0し、【突進】を持たせる。',sp:x=>{if(isLive(x.target)){buff(x.target,2,0);x.target.kw.add('rush')}}});
+C({n:'甲板長',c:'royal',t:'F',cost:3,a:2,h:4,kw:['ward']});
+C({n:'旗艦の操舵手',c:'royal',t:'F',cost:4,a:3,h:3,r:'S',tx:'【ファンファーレ】『戦慄の海賊旗』1つを自分の場に出す。カードを1枚引く。',ff:x=>{summon(x.i,'戦慄の海賊旗');draw(x.i,1)}});
+C({n:'カトラスの剣士',c:'royal',t:'F',cost:4,a:4,h:3,kw:['rush']});
+C({n:'誇り高き騎士',c:'royal',t:'F',cost:5,a:4,h:5,kw:['ward'],tx:'【ファンファーレ】自分のリーダーを3回復。',ff:x=>heal(x.i,3)});
+C({n:'一斉砲火',c:'royal',t:'S',cost:4,r:'S',tx:'相手のフォロワーすべてに2ダメージ。',sp:x=>dmgEach(foll(E(x.i)),2)});
+C({n:'武皇の変貌ベルテゾール',c:'royal',t:'F',cost:6,a:5,h:5,r:'L',tx:'【ファンファーレ】自分の他のフォロワーすべてを+1/+1。\n【進化時】自分の場の『戦慄の海賊旗』すべてのカウント-2。',
+  ff:x=>foll(x.i).filter(c=>c!==x.self).forEach(c=>buff(c,1,1)),evo:x=>flags(x.i).forEach(f=>cdown(f,2))});
+C({n:'逆行の咎人バルバロス',c:'royal',t:'F',cost:7,a:4,h:3,r:'L',kw:['storm'],tx:'【ファンファーレ】『戦慄の海賊旗』1つを自分の場に出し、自分の場の『戦慄の海賊旗』すべてのカウント-5。',
+  ff:x=>{summon(x.i,'戦慄の海賊旗');flags(x.i).forEach(f=>cdown(f,5))}});
+
+/* ---- Nemesis ---- */
+C({n:'アナライズアーティファクト',c:'nemesis',t:'F',cost:1,a:1,h:1,tok:1,af:1,tx:'【ファンファーレ】カードを1枚引く。',ff:x=>draw(x.i,1)});
+C({n:'エッジアーティファクト',c:'nemesis',t:'F',cost:2,a:2,h:1,tok:1,af:1,kw:['rush','bane']});
+C({n:'ラディアントアーティファクト',c:'nemesis',t:'F',cost:5,a:4,h:3,tok:1,af:1,kw:['storm'],tx:'【ファンファーレ】カードを1枚引く。',ff:x=>draw(x.i,1)});
+C({n:'ジェネシスアーティファクト',c:'nemesis',t:'F',cost:6,a:5,h:5,tok:1,af:1,kw:['ward'],tx:'【ファンファーレ】相手のリーダーと相手のフォロワーすべてに2ダメージ。',
+  ff:x=>{damage(L(E(x.i)),2);dmgEach(foll(E(x.i)),2)}});
+C({n:'操り人形',c:'nemesis',t:'F',cost:0,a:1,h:1,tok:1,kw:['rush'],tx:'相手のターン終了時、これを破壊する。',onOppEnd:x=>destroy(x.self)});
+C({n:'束刃の咎人・カットスロート',c:'nemesis',t:'F',cost:4,a:3,h:3,r:'L',
+  tx:'【進化時】自分のデッキの『束刃の咎人・カットスロート』をすべて消滅させる。その後、自分のデッキに同名のカードが2枚以上ないなら『クレスト：束刃の咎人・カットスロート』を得る。\nクレスト：自分がフォロワーをプレイしたとき、ターン1回、それを進化させる（EPを消費しない）。',
+  evo:x=>{const p=P(x.i);p.deck=p.deck.filter(c=>c.name!==x.self.name);const ns=p.deck.map(c=>c.name);
+    if(new Set(ns).size===ns.length)gainCrest(x.i,{name:'束刃の咎人・カットスロート',desc:'フォロワーをプレイしたとき、ターン1回それを進化させる',
+      onPlayF:(i,c,cr)=>{if(cr.used===G.turnNo||c.evolved||!onBoard(c))return;cr.used=G.turnNo;log('クレスト発動：'+c.name+' を進化');evolve(i,c,false,true,aiTarget(i,c.d.etgt,c,c.d.eai))}});
+    else log('デッキに重複があるためクレストは得られなかった')}});
+C({n:'研究員の助手',c:'nemesis',t:'F',cost:1,a:1,h:2,tx:'【ファンファーレ】『アナライズアーティファクト』1枚を自分の手札に加える。',ff:x=>add(x.i,'アナライズアーティファクト')});
+C({n:'アーティファクトスキャン',c:'nemesis',t:'S',cost:1,tx:'『アナライズアーティファクト』2枚を自分の手札に加える。',sp:x=>add(x.i,'アナライズアーティファクト',2)});
+C({n:'銀翼の機兵',c:'nemesis',t:'F',cost:1,a:1,h:1,kw:['storm']});
+C({n:'次元の裂け目',c:'nemesis',t:'S',cost:1,tgt:'ef',ai:{dmg:1},tx:'相手のフォロワー1体に1ダメージ。『操り人形』1枚を自分の手札に加える。',sp:x=>{tdmg(x,1);add(x.i,'操り人形')}});
+C({n:'人形の紡ぎ手',c:'nemesis',t:'F',cost:2,a:1,h:2,tx:'【ファンファーレ】『操り人形』2枚を自分の手札に加える。',ff:x=>add(x.i,'操り人形',2)});
+C({n:'エッジ・ディーラー',c:'nemesis',t:'F',cost:2,a:2,h:2,tx:'【ファンファーレ】『エッジアーティファクト』1枚を自分の手札に加える。',ff:x=>add(x.i,'エッジアーティファクト')});
+C({n:'共鳴する鉄機',c:'nemesis',t:'F',cost:2,a:2,h:2,tx:'【ファンファーレ】自分の場にアーティファクトがいるなら、+1/+1し【突進】を持つ。',
+  ff:x=>{if(foll(x.i).some(c=>c.d.af)){buff(x.self,1,1);x.self.kw.add('rush')}}});
+C({n:'解析の光線',c:'nemesis',t:'S',cost:2,tgt:'ef',ai:{dmg:3},tx:'相手のフォロワー1体に3ダメージ。',sp:x=>tdmg(x,3)});
+C({n:'鋼鉄の番人',c:'nemesis',t:'F',cost:3,a:2,h:4,kw:['ward']});
+C({n:'創造の技師',c:'nemesis',t:'F',cost:3,a:2,h:3,r:'S',tx:'【ファンファーレ】『ラディアントアーティファクト』1枚を自分の手札に加える。',ff:x=>add(x.i,'ラディアントアーティファクト')});
+C({n:'糸繰りの令嬢',c:'nemesis',t:'F',cost:3,a:2,h:2,r:'S',tx:'【ファンファーレ】『操り人形』2体を自分の場に出す。',ff:x=>summon(x.i,'操り人形',2)});
+C({n:'必殺の機兵',c:'nemesis',t:'F',cost:3,a:2,h:2,kw:['bane']});
+C({n:'ジェネシスの設計図',c:'nemesis',t:'S',cost:3,r:'G',tx:'『ジェネシスアーティファクト』1枚を自分の手札に加える。カードを1枚引く。',sp:x=>{add(x.i,'ジェネシスアーティファクト');draw(x.i,1)}});
+C({n:'機構の狩人',c:'nemesis',t:'F',cost:4,a:4,h:3,kw:['rush']});
+C({n:'時空の観測者',c:'nemesis',t:'F',cost:4,a:3,h:4,r:'S',tx:'【ファンファーレ】カードを2枚引く。',ff:x=>draw(x.i,2)});
+C({n:'次元超越',c:'nemesis',t:'S',cost:4,r:'G',tgt:'ef',ai:{kill:1},tx:'相手のフォロワー1体を消滅させる。',sp:x=>{if(isLive(x.target))banish(x.target)}});
+C({n:'人形少女・オーキス',c:'nemesis',t:'F',cost:5,a:4,h:4,r:'L',tx:'【ファンファーレ】『操り人形』3体を自分の場に出す。\n【進化時】自分の場の『操り人形』すべてを+1/+1。',
+  ff:x=>summon(x.i,'操り人形',3),evo:x=>foll(x.i).filter(c=>c.name==='操り人形').forEach(c=>buff(c,1,1))});
+C({n:'ラボの司令塔',c:'nemesis',t:'F',cost:5,a:4,h:5,r:'G',tx:'【ファンファーレ】自分の場のアーティファクトすべてを+1/+1。カードを1枚引く。',
+  ff:x=>{foll(x.i).filter(c=>c.d.af).forEach(c=>buff(c,1,1));draw(x.i,1)}});
+C({n:'無限の検算',c:'nemesis',t:'S',cost:5,r:'G',tx:'相手のフォロワーすべてに3ダメージ。',sp:x=>dmgEach(foll(E(x.i)),3)});
+C({n:'鋼鉄の巨人',c:'nemesis',t:'F',cost:6,a:5,h:6,kw:['ward'],tgt:'ef',ai:{dmg:3},tx:'【ファンファーレ】相手のフォロワー1体に3ダメージ。',ff:x=>tdmg(x,3)});
+C({n:'終極の創造者',c:'nemesis',t:'F',cost:7,a:5,h:5,r:'L',tx:'【ファンファーレ】『ジェネシスアーティファクト』1体を自分の場に出す。\n【進化時】相手のフォロワーすべてに2ダメージ。',
+  ff:x=>summon(x.i,'ジェネシスアーティファクト'),evo:x=>dmgEach(foll(E(x.i)),2)});
+
+/* ================= decks ================= */
+const NEMESIS_HL=['束刃の咎人・カットスロート','研究員の助手','アーティファクトスキャン','銀翼の機兵','次元の裂け目','人形の紡ぎ手','エッジ・ディーラー','共鳴する鉄機','解析の光線','鋼鉄の番人','創造の技師','糸繰りの令嬢','必殺の機兵','ジェネシスの設計図','機構の狩人','時空の観測者','次元超越','人形少女・オーキス','ラボの司令塔','無限の検算','鋼鉄の巨人','終極の創造者',
+  '空の命運を握る少女・ルリア','律する《正義》・イランツァ','ゴブリン','ファイター','ハムサ','ゴリアテ','ヒーリングエンジェル','エンジェルスナイプ','エンジェルバレッジ','天界の守護者','ミノタウロス','メカゴブリン','ガブリエル','ペガサス','ルシフェル','ダークエンジェル・オリヴィエ','ゼウス','バハムート'];
+const DECKS={
+  dragon:{name:'ランプドラゴン',cls:'dragon',tier:'Tier 1',desc:'PP最大値を伸ばして早く【覚醒】し、大型レジェンドで押し切る。ルリアのエンハンス8で7コスト以上を引きつつPPを回復。',
+    keys:['空の命運を握る少女・ルリア','律する《正義》・イランツァ','禁牙の変貌・ノマグダラ'],
+    list:[['竜の啓示',3],['旧き天刀・ヴォーラライ',3],['怠惰なる波揺花',3],['空の命運を握る少女・ルリア',3],['喧伝の龍人',3],['笑顔の調理・キミカ',2],['ドラゴンブレス',3],['エンジェルバレッジ',2],['竜鱗の守り手',3],
+      ['断頭の斬姫・サガツマツ',3],['金銀絢爛・リュミオール＆アルジャンテ',3],['禁牙の変貌・ノマグダラ',3],['焦灰のアナテマ・バーンドナイト',3],['律する《正義》・イランツァ',3]]},
+  elf:{name:'コンボエルフ',cls:'elf',tier:'Tier 1',desc:'フェアリーで手数を稼いで【コンボ】を達成。ダストデイズを進化させてクレストを得れば、デッキのフォロワーが毎ターン育つ。',
+    keys:['操嵩のアナテマ・ダストデイズ','舞い踊る妖精','森の女王'],
+    list:[['燐光の岩',3],['フェアリーサークル',3],['フェアリーの祝福',3],['フェアリーテイマー',3],['舞い踊る妖精',3],['リノセウス',3],['ソーンバースト',3],['森の神託',3],
+      ['翠緑の射手',3],['操嵩のアナテマ・ダストデイズ',3],['大樹の守護者',3],['クリスタリア・イヴ',3],['森の女王',3],['ゴブリン',1]]},
+  nemesis:{name:'ハイランダーネメシス',cls:'nemesis',tier:'Tier 1',desc:'40枚すべて別カード。カットスロートを進化させてクレストを得ると、フォロワーをプレイするたびターン1回無料で進化。',
+    keys:['束刃の咎人・カットスロート','人形少女・オーキス','終極の創造者'],
+    list:NEMESIS_HL.map(n=>[n,1])},
+  royal:{name:'海賊ロイヤル',cls:'royal',tier:'Tier 1',desc:'『戦慄の海賊旗』を並べ、スペルでカウントを進める。バルバロスで全旗のカウントを一気に進めて大ダメージ。',
+    keys:['逆行の咎人バルバロス','戦慄の海賊旗','武皇の変貌ベルテゾール'],
+    list:[['クイックブレーダー',3],['海賊の斥候',3],['船長の号令',3],['見習い海賊',3],['砲撃',3],['突撃命令',3],['甲板長',3],['旗艦の操舵手',3],['カトラスの剣士',3],
+      ['一斉砲火',3],['誇り高き騎士',3],['武皇の変貌ベルテゾール',3],['逆行の咎人バルバロス',3],['ファイター',1]]},
+};
+for(const k in DECKS){const n=DECKS[k].list.reduce((s,[name,c])=>{if(!DB[name])console.error('missing',name);if(c>3)console.error('over 3',name);return s+c},0);if(n!==40)console.error('deck size',k,n)}
+
+/* ================= rules ================= */
+function newPlayer(i,key,name){
+  const dk=DECKS[key];
+  const p={i,name,deckKey:key,cls:dk.cls,hp:20,maxHp:20,pp:0,ppMax:0,ep:2,sep:2,evoUsed:false,turn:0,combo:0,second:false,xpE:false,xpL:false,
+    crests:[],hand:[],board:[],deck:[],grave:0,leader:{isLeader:true,owner:i,uid:'L'+i}};
+  for(const [n,c] of dk.list)for(let k=0;k<c;k++)p.deck.push(inst(n,i));
+  shuffle(p.deck);return p;
+}
+function checkWin(){if(G.over)return;const a=G.p[0].hp<=0,b=G.p[1].hp<=0;if(a||b)G.over={winner:a&&b?-1:a?1:0,reason:'リーダーの体力が0になった'}}
+function resolveDeaths(){
+  for(let guard=0;guard<30;guard++){
+    const dying=[];
+    for(const p of G.p)for(const c of p.board){if(c.dead||(c.d.t==='F'&&c.hp<=0)||(c.d.t==='A'&&c.cd!=null&&c.cd<=0))dying.push(c)}
+    if(!dying.length)break;
+    for(const c of dying){const p=P(c.owner);p.board.splice(p.board.indexOf(c),1);p.grave++;log(`${c.name} は破壊された`)}
+    for(const c of dying)if(c.d.lw){log(`${c.name} のラストワード`);c.d.lw(ctxOf(c))}
+  }
+  checkWin();
+}
+function targets(i,spec,self){
+  if(!spec)return [];
+  const ef=efx(i);
+  if(spec==='ef')return ef;
+  if(spec==='ec')return [...ef,L(E(i))];
+  if(spec==='af')return foll(i).filter(c=>c!==self);
+  return [];
+}
+const effCost=(p,c)=>(c.d.enh&&p.pp>=c.d.enh.n)?c.d.enh.n:c.cost;
+function playBlock(i,c){
+  const p=P(i);
+  if(G.over)return '対戦は終了しています';
+  if(G.active!==i)return '相手のターンです';
+  if(p.pp<c.cost)return 'PPが足りません';
+  if(c.d.t!=='S'&&p.board.length>=BOARD_MAX)return '場がいっぱいです（5枠）';
+  if(c.d.t==='S'&&c.d.tgt&&!targets(i,c.d.tgt,c).length)return '対象にできるフォロワーがいません';
+  return '';
+}
+const canPlay=(i,c)=>!playBlock(i,c);
+function play(i,c,target){
+  const p=P(i);const enh=!!(c.d.enh&&p.pp>=c.d.enh.n);const cost=enh?c.d.enh.n:c.cost;
+  p.pp-=cost;p.hand.splice(p.hand.indexOf(c),1);p.combo++;
+  log(`${p.name}：「${c.name}」をプレイ${enh?'（エンハンス）':''}${target&&!target.isLeader?` → ${target.name}`:''}`);
+  const x={i,self:c,target,enh,combo:p.combo};
+  if(c.d.t==='S'){
+    c.d.sp&&c.d.sp(x);p.grave++;resolveDeaths();
+    for(const b of [...p.board])if(onBoard(b)&&b.d.onSpell)b.d.onSpell(ctxOf(b));
+  }else{
+    c.newly=true;c.attacked=false;p.board.push(c);
+    c.d.ff&&c.d.ff(x);if(enh&&c.d.enh.fn)c.d.enh.fn(x);
+  }
+  resolveDeaths();
+  if(c.d.t==='F'&&onBoard(c))for(const cr of [...p.crests])cr.onPlayF&&cr.onPlayF(i,c,cr);
+  resolveDeaths();
+}
+const evoNeed=(p,sup)=>sup?(p.second?6:7):(p.second?4:5);
+function evoBlock(i,c,sup){
+  const p=P(i);
+  if(G.active!==i||G.over)return '自分のターンのみ';
+  if(c.d.t!=='F'||c.owner!==i)return '';
+  if(c.evolved)return '進化済み';
+  if(p.turn<evoNeed(p,sup))return `自分の${evoNeed(p,sup)}ターン目から`;
+  if(p.evoUsed)return 'このターンは進化済み';
+  if(sup?p.sep<=0:p.ep<=0)return sup?'SEPがありません':'EPがありません';
+  return '';
+}
+const canEvolve=(i,c,sup)=>onBoard(c)&&!evoBlock(i,c,sup);
+function evolve(i,c,sup,free,target){
+  const p=P(i);
+  if(!free){p.evoUsed=true;if(sup)p.sep--;else p.ep--}
+  c.evolved=true;const b=sup?3:2;c.atk+=b;c.hp+=b;c.maxHp+=b;
+  if(sup){c.sevo=true;c.kw.add('rush')}
+  fx(c.uid,sup?'超進化':'進化','buff');
+  log(`${p.name}：「${c.name}」を${sup?'超進化':'進化'}${free?'（クレスト）':''}`);
+  const x={i,self:c,target,combo:p.combo};
+  c.d.evo&&c.d.evo(x);
+  if(sup&&c.d.sevo)c.d.sevo(x);
+  resolveDeaths();
+}
+const canAtkF=c=>c.owner===G.active&&c.d.t==='F'&&!c.attacked&&c.atk>0&&(!c.newly||c.kw.has('storm')||c.kw.has('rush')||c.evolved);
+const canAtkL=c=>c.owner===G.active&&c.d.t==='F'&&!c.attacked&&c.atk>0&&(!c.newly||c.kw.has('storm'));
+function atkTargets(c){
+  if(!onBoard(c)||G.over||!canAtkF(c))return [];
+  const e=E(c.owner);const ef=foll(e).filter(x=>!x.kw.has('intim'));
+  const wards=ef.filter(x=>x.kw.has('ward'));
+  if(wards.length)return wards;
+  const r=[...ef];if(canAtkL(c))r.push(L(e));return r;
+}
+function attack(a,t){
+  a.attacked=true;
+  log(`${a.name} が ${t.isLeader?P(t.owner).name+'のリーダー':t.name} を攻撃`);
+  if(t.isLeader){const d=damage(t,a.atk);if(a.kw.has('drain')&&d)heal(a.owner,d)}
+  else{
+    const da=a.atk,dt=t.atk;
+    const dealt=damage(t,da);const taken=damage(a,dt);
+    if(a.kw.has('bane')&&dealt>0)t.dead=true;
+    if(t.kw.has('bane')&&taken>0)a.dead=true;
+    if(a.kw.has('drain')&&dealt)heal(a.owner,dealt);
+  }
+  resolveDeaths();
+}
+function startTurn(i){
+  G.active=i;G.turnNo++;const p=P(i);
+  p.turn++;if(p.ppMax<10)p.ppMax++;p.pp=p.ppMax;p.evoUsed=false;p.combo=0;
+  log(`${p.name} のターン ${p.turn}`,'t');
+  for(const c of p.board){c.newly=false;c.attacked=false}
+  for(const c of p.board)if(c.d.t==='A'&&c.cd!=null)cdown(c,1);
+  for(const cr of p.crests)if(cr.cd!=null)cr.cd--;
+  p.crests=p.crests.filter(cr=>cr.cd==null||cr.cd>0);
+  for(const c of [...p.board])if(onBoard(c)&&c.d.onStart)c.d.onStart(ctxOf(c));
+  resolveDeaths();if(G.over)return;
+  draw(i,1);
+}
+function endTurn(i){
+  const p=P(i);
+  for(const c of [...p.board])if(onBoard(c)&&c.d.onEnd)c.d.onEnd(ctxOf(c));
+  resolveDeaths();
+  for(const cr of [...p.crests])cr.onEnd&&cr.onEnd(i);
+  for(const c of [...P(E(i)).board])if(onBoard(c)&&c.d.onOppEnd)c.d.onOppEnd(ctxOf(c));
+  resolveDeaths();
+  if(G.over)return;
+  startTurn(E(i));
+}
+const canExtra=i=>{const p=P(i);return p.second&&G.active===i&&!G.over&&(p.turn<=5?!p.xpE:!p.xpL)};
+function useExtra(i){const p=P(i);p.pp++;if(p.turn<=5)p.xpE=true;else p.xpL=true;log(`${p.name} はエクストラPPを使用（このターンPP+1）`)}
+function mulligan(i,cards){const p=P(i);for(const c of cards)p.hand.splice(p.hand.indexOf(c),1);for(let k=0;k<cards.length;k++)p.hand.push(p.deck.pop());p.deck.push(...cards);shuffle(p.deck)}
+
+/* ================= CPU ================= */
+const val=t=>t.atk*1.5+t.hp+(t.kw.has('ward')?1:0)+(t.evolved?2:0)+(t.d.onEnd?4:0)+(t.d.r==='L'?2:0);
+function aiTarget(i,spec,self,hint){
+  if(!spec)return undefined;
+  const ts=targets(i,spec,self);if(!ts.length)return undefined;
+  hint=hint||{};
+  if(spec==='af')return ts.slice().sort((a,b)=>(b.atk+b.hp+(b.attacked?0:2))-(a.atk+a.hp+(a.attacked?0:2)))[0];
+  const fs=ts.filter(t=>!t.isLeader);
+  if(hint.dmg!=null){const n=typeof hint.dmg==='function'?hint.dmg(i):hint.dmg;
+    const k=fs.filter(t=>t.hp<=n&&!t.kw.has('barrier')&&!(t.sevo&&G.active===t.owner));if(k.length)return k.sort((a,b)=>val(b)-val(a))[0]}
+  if(!fs.length)return ts[0];
+  return fs.sort((a,b)=>val(b)-val(a))[0];
+}
+function aiWants(i,c){
+  if(c.name==='バハムート'){const mine=foll(i).reduce((s,x)=>s+val(x),0),theirs=foll(E(i)).reduce((s,x)=>s+val(x),0);return theirs>mine+6}
+  if(c.d.t==='S'&&c.d.tgt==='ef'&&c.d.ai&&c.d.ai.dmg!=null){const t=aiTarget(i,'ef',c,c.d.ai);return !!t&&(t.atk>=2||t.hp<=(typeof c.d.ai.dmg==='function'?c.d.ai.dmg(i):c.d.ai.dmg))}
+  if(c.name==='エンジェルバレッジ'||c.name==='一斉砲火'||c.name==='無限の検算')return foll(E(i)).length>=2;
+  return true;
+}
+function aiBest(i){
+  const p=P(i);const list=p.hand.filter(c=>canPlay(i,c)&&aiWants(i,c));
+  if(!list.length)return {sum:0,set:[]};
+  const slots=BOARD_MAX-p.board.length;let best={v:-1,sum:0,set:[]};
+  const n=Math.min(list.length,10);
+  for(let m=1;m<(1<<n);m++){let sum=0,cnt=0,bodies=0,leg=0;const set=[];
+    for(let k=0;k<n;k++)if(m>>k&1){const c=list[k];sum+=c.cost;cnt++;if(c.d.t!=='S')bodies++;if(c.d.r==='L')leg++;set.push(c)}
+    if(sum>p.pp||bodies>slots)continue;
+    const v=sum*10+cnt*2+leg;if(v>best.v)best={v,sum,set};}
+  return best;
+}
+const ord=c=>c.cost+(c.d.combo?20+c.d.combo*2:0)+(c.name==='逆行の咎人バルバロス'||c.name==='森の女王'?60:0)+(c.d.t==='S'&&c.d.tgt==='ef'?-10:0)+(c.d.tgt==='af'?30:0)+(c.d.t==='A'?-5:0);
+function aiChoosePlay(i){
+  const p=P(i);
+  const en=p.hand.find(c=>c.d.enh&&p.pp>=c.d.enh.n&&canPlay(i,c)&&p.board.length<BOARD_MAX);
+  if(en)return en;
+  const b=aiBest(i);if(!b.set.length)return null;
+  return b.set.sort((a,c)=>ord(a)-ord(c))[0];
+}
+function aiExtraHelps(i){const p=P(i);const s0=aiBest(i).sum;p.pp++;const s1=aiBest(i).sum;p.pp--;return s1>s0}
+function aiEvolve(i){
+  const enemyF=foll(E(i)).length;
+  for(const sup of [true,false]){
+    const cs=foll(i).filter(c=>canEvolve(i,c,sup));if(!cs.length)continue;
+    const sc=c=>(c.d.evo?4:0)+(sup&&c.d.sevo?4:0)+(c.newly&&!c.kw.has('storm')&&!c.kw.has('rush')&&enemyF?3:0)+c.atk*.4+(c.d.etgt&&targets(i,c.d.etgt,c).length?3:0)-(c.d.tok?2:0)+(c.name==='束刃の咎人・カットスロート'?6:0);
+    cs.sort((a,b)=>sc(b)-sc(a));const c=cs[0];
+    if(sc(c)<2&&!enemyF)continue;
+    return {c,sup};
+  }
+  return null;
+}
+function aiPickAttack(i){
+  const e=E(i);const atk=foll(i).filter(c=>atkTargets(c).length);if(!atk.length)return null;
+  const eh=P(e).hp;const wards=foll(e).filter(x=>x.kw.has('ward')&&!x.kw.has('intim'));
+  if(!wards.length){const face=atk.filter(canAtkL).reduce((s,c)=>s+c.atk,0);if(face>=eh){return {att:atk.find(canAtkL),tgt:L(e)}}}
+  let best=null;
+  for(const a of atk)for(const t of atkTargets(a)){
+    let s;
+    if(t.isLeader)s=a.atk+(eh<=10?a.atk*.6:0);
+    else{
+      const kills=!t.kw.has('barrier')&&(a.atk>=t.hp||a.kw.has('bane'));
+      const dies=!a.sevo&&!a.kw.has('barrier')&&(t.atk>=a.hp||(t.kw.has('bane')&&t.atk>0));
+      s=(kills?val(t)+2:-2)-(dies?val(a):0)+(kills&&!dies?4:0)+(t.kw.has('ward')&&kills?2:0);
+    }
+    if(!best||s>best.s)best={att:a,tgt:t,s};
+  }
+  return best&&best.s>0?best:null;
+}
+async function aiTurn(){
+  const g=G,i=1;g.busy=true;UI.sel=null;UI.tgt=null;
+  const alive=()=>G===g&&!g.over;
+  const step=async ms=>{render();await sleep(ms);return alive()};
+  const fin=()=>{if(G===g){g.busy=false;render()}};
+  if(!await step(650))return fin();
+  if(canExtra(i)&&aiExtraHelps(i)){useExtra(i);if(!await step(450))return fin()}
+  for(let k=0;k<14;k++){const c=aiChoosePlay(i);if(!c)break;play(i,c,aiTarget(i,c.d.tgt,c,c.d.ai));if(!await step(850))return fin()}
+  const ev=aiEvolve(i);
+  if(ev){evolve(i,ev.c,ev.sup,false,aiTarget(i,ev.c.d.etgt,ev.c,ev.c.d.eai));if(!await step(850))return fin()}
+  for(let k=0;k<12;k++){const a=aiPickAttack(i);if(!a)break;attack(a.att,a.tgt);if(!await step(700))return fin()}
+  for(let k=0;k<6;k++){const c=aiChoosePlay(i);if(!c)break;play(i,c,aiTarget(i,c.d.tgt,c,c.d.ai));if(!await step(750))return fin()}
+  if(!alive())return fin();
+  endTurn(i);g.busy=false;render();
+}
+
+/* ================= UI ================= */
+let UI={screen:'title',pick:'dragon',opp:'random',sel:null,tgt:null,mull:null,log:false,rules:false};
+const app=document.getElementById('app');
+function find(uid){for(const p of G.p){for(const c of p.board)if(c.uid===uid)return c;for(const c of p.hand)if(c.uid===uid)return c}return null}
+function selObj(){if(!UI.sel)return null;const c=find(UI.sel.uid);if(!c){UI.sel=null;return null}return c}
+function isTgt(o){
+  if(!G||G.over)return false;
+  if(UI.tgt)return UI.tgt.valid.includes(o);
+  const s=selObj();
+  return !!(s&&UI.sel.kind==='board'&&s.owner===0&&G.active===0&&!G.busy&&o.owner!==0&&atkTargets(s).includes(o));
+}
+function cardText(c,full){
+  const kws=[...c.kw].map(k=>`【${KW[k]}】`).join('');
+  let s=(kws?kws+(c.d.tx?'\n':''):'')+c.d.tx;
+  if(!s)s='（能力なし）';
+  return esc(s).replace(/\n/g,'<br>').replace(/【([^】]+)】/g,'<em>【$1】</em>');
+}
+function render(){
+  if(UI.screen==='title'){app.innerHTML=titleHTML();return}
+  app.innerHTML=gameHTML();
+  for(const f of G.fx){const el=app.querySelector(`[data-uid="${f.uid}"]`);if(!el)continue;const s=document.createElement('span');s.className='fx fx-'+f.kind;s.textContent=f.text;el.appendChild(s);setTimeout(()=>s.remove(),1050)}
+  G.fx=[];
+}
+
+function titleHTML(){
+  const dk=DECKS[UI.pick];
+  const decks=Object.entries(DECKS).map(([k,d])=>`<button class="deck" data-deck="${k}" aria-pressed="${UI.pick===k}" data-glyph="${CLS[d.cls].k}" style="--clsc:var(--${d.cls})">
+      <span class="tier">${d.tier}</span><span class="dc">${CLS[d.cls].n}</span><span class="dn">${d.name}</span><span class="dd">${d.desc}</span>
+      <span class="keys">${d.keys.map(n=>`<i>${esc(n)}</i>`).join('')}</span></button>`).join('');
+  const opps=[['random','ランダム'],...Object.entries(DECKS).map(([k,d])=>[k,d.name])].map(([k,n])=>`<button class="chip" data-opp="${k}" aria-pressed="${UI.opp===k}">${n}</button>`).join('');
+  const list=dk.list.map(([n,c])=>[DB[n],c]).sort((a,b)=>a[0].cost-b[0].cost).map(([d,c])=>`<div><span class="c">${d.cost}</span><span class="n" title="${esc(d.n)}">${esc(d.n)}</span><span class="x">×${c}</span></div>`).join('');
+  return `<div class="screen-title"><div class="title-wrap">
+    <header><p class="eyebrow">非公式ファンメイド ／ ワールズビヨンドの対戦ルール準拠</p>
+      <h1 class="logo">ビヨンド<span>・</span>デュエル</h1>
+      <p class="lede">40枚デッキ、リーダー体力20、PP上限10。進化・超進化、後攻のエクストラPP、クレストまで再現しました。第9弾「アズヴォルト・レヴナント」期ローテーションの上位デッキで CPU と対戦します。</p></header>
+    <section><h2 class="sec">使用デッキ <small>タップで選択</small></h2><div class="deck-grid">${decks}</div></section>
+    <section><h2 class="sec">対戦相手</h2><div class="chips">${opps}</div></section>
+    <div class="cta"><button class="btn big" data-act="start">対戦開始</button><button class="btn ghost big" data-act="rules">ルール</button></div>
+    <section><h2 class="sec">${dk.name} <small>40枚・コスト順</small></h2><div class="decklist">${list}</div></section>
+    <section><h2 class="sec">基本ルール</h2><div class="rulegrid">
+      <div><b>40</b><span>デッキ枚数（同名3枚まで）</span></div><div><b>20</b><span>リーダー体力</span></div>
+      <div><b>4</b><span>初手枚数（マリガン1回）</span></div><div><b>10</b><span>PP上限（毎ターン+1）</span></div>
+      <div><b>9 / 5</b><span>手札上限 ／ 場の枠</span></div><div><b>2 + 2</b><span>EP ／ SEP（先後共通）</span></div>
+      <div><b>5・7</b><span>先攻の進化／超進化解禁ターン</span></div><div><b>4・6</b><span>後攻の進化／超進化解禁ターン</span></div></div></section>
+    <p class="note">カード名は現環境の上位デッキの採用カードから選んでいます。効果とステータスは攻略情報をもとに再現・簡略化したもので、実際のカードとは異なる部分があります。デッキの空き枠には汎用カードを入れています。</p>
+  </div></div>${UI.rules?rulesHTML():''}`;
+}
+function rulesHTML(){
+  return `<div class="overlay" data-act="closerules"><div class="modal rules" role="dialog" aria-label="ルール" data-stop="1">
+   <h2>対戦ルール</h2>
+   <ol>
+    <li>デッキは40枚。同名カードは3枚まで。リーダーの体力は20で、相手の体力を0にすると勝ち。山札が0枚の状態でカードを引くと負け。</li>
+    <li>先攻・後攻はランダム。初手は4枚で、好きな枚数を1回だけ引き直せます（マリガン）。</li>
+    <li>ターン開始時にPP最大値+1（上限10）、PP全回復、カードを1枚引きます。先攻も1ターン目に引きます。</li>
+    <li>手札は9枚まで（あふれたカードは破棄）。場はフォロワーとアミュレット合わせて5枠。</li>
+    <li>フォロワーは出したターンは攻撃できません。【疾走】はリーダーとフォロワー、【突進】はフォロワーを攻撃できます。相手に【守護】がいれば先にそれを攻撃します。</li>
+    <li>進化：EP2回。先攻は自分の5ターン目、後攻は4ターン目から。+2/+2、出たターンでもフォロワーを攻撃できます。</li>
+    <li>超進化：SEP2回。先攻7ターン目、後攻6ターン目から。+3/+3と【突進】、進化時と超進化時の能力が両方発動。自分のターン中はダメージを受けず、能力で破壊・消滅されません。</li>
+    <li>進化と超進化は合わせて1ターンに1回。</li>
+    <li>後攻のエクストラPP：自分の1〜5ターン目に1回、6ターン目以降に1回、そのターンだけPP+1。</li>
+   </ol>
+   <dl>
+    <dt>ファンファーレ</dt><dd>プレイして場に出たとき発動</dd>
+    <dt>ラストワード</dt><dd>破壊されたとき発動（消滅では発動しない）</dd>
+    <dt>必殺</dt><dd>交戦でダメージを与えたフォロワーを破壊</dd>
+    <dt>ドレイン</dt><dd>与えたダメージぶん自分のリーダーを回復</dd>
+    <dt>バリア</dt><dd>次に受けるダメージを1回だけ0にする</dd>
+    <dt>威圧</dt><dd>相手のフォロワーに攻撃されない</dd>
+    <dt>エンハンス_N</dt><dd>PPがN以上あるとき、Nコストで追加効果つきでプレイ</dd>
+    <dt>コンボ_N</dt><dd>このターンにプレイしたカードがN枚以上（そのカードを含む）なら発動</dd>
+    <dt>覚醒</dt><dd>自分のPP最大値が7以上</dd>
+    <dt>カウントダウン</dt><dd>自分のターン開始時に-1、0で破壊</dd>
+    <dt>クレスト</dt><dd>リーダーに付く、試合を通して働く効果</dd>
+   </dl>
+   <div class="btnrow"><button class="btn" data-act="closerules">閉じる</button></div>
+  </div></div>`;
+}
+
+function pips(n,max,cls,locked){let s=`<span class="pips ${cls} ${locked?'locked':''}">`;for(let k=0;k<max;k++)s+=`<i class="pip ${k<n?'on':''}"></i>`;return s+'</span>'}
+function leaderHTML(i){
+  const p=P(i),me=i===0;
+  let orbs='';const m=Math.max(p.ppMax,p.pp);for(let k=0;k<m;k++)orbs+=`<i class="orb ${k<p.pp?(k>=p.ppMax?'x':'on'):''}"></i>`;
+  const crests=p.crests.length?`<div class="crests">${p.crests.map(cr=>`<span class="crest" title="${esc(cr.desc)}">クレスト：${esc(cr.name)}${cr.cd!=null?` ⏳${cr.cd}`:''}</span>`).join('')}</div>`:'';
+  const xp=p.second?`<span title="エクストラPP">XPP ${(p.turn<=5?!p.xpE:!p.xpL)?'残':'済'}</span>`:'';
+  return `<div class="lbar" style="--clsc:var(--${p.cls})">
+    <button class="leader ${isTgt(L(i))?'tgt':''} ${p.hp<=6?'low':''}" data-leader="${i}" data-uid="L${i}" aria-label="${esc(p.name)}のリーダー 体力${p.hp}"><span class="glyph">${CLS[p.cls].k}</span><span class="hpv">${p.hp}</span></button>
+    <div class="lmeta">
+      <div class="lname">${esc(p.name)}<span class="cls">${DECKS[p.deckKey].name}</span><span class="tag">${p.second?'後攻':'先攻'}</span></div>
+      <div class="res"><span><b>${p.pp}</b>/${p.ppMax} PP</span><span class="orbs">${orbs}</span>
+        <span class="ep">EP ${pips(p.ep,2,'',p.turn<evoNeed(p,false))}</span><span class="sep">SEP ${pips(p.sep,2,'',p.turn<evoNeed(p,true))}</span>
+        <span>山札 ${p.deck.length}</span>${me?'':`<span>手札 ${p.hand.length}</span>`}${xp}</div>
+      ${crests}
+    </div>${me?'':`<div class="ohand" aria-hidden="true">${'<i></i>'.repeat(p.hand.length)}</div>`}
+  </div>`;
+}
+function unitHTML(c){
+  const cl=['unit'];
+  if(c.d.t==='A')cl.push('amulet');
+  if(c.evolved)cl.push(c.sevo?'sevo':'evo');
+  if(c.owner===0&&G.active===0&&!G.busy&&!UI.tgt&&atkTargets(c).length)cl.push('ready');
+  if(UI.sel&&UI.sel.uid===c.uid)cl.push('sel');
+  if(isTgt(c))cl.push('tgt');
+  const kws=[...c.kw].map(k=>`<i class="kw">${KW[k]}</i>`).join('')+(c.d.lw?'<i class="kw n">LW</i>':'')+(c.d.onEnd?'<i class="kw n">終了時</i>':'')+(c.newly&&c.d.t==='F'&&!c.kw.has('storm')&&!c.kw.has('rush')&&!c.evolved?'<i class="kw n">召喚</i>':'');
+  const body=c.d.t==='A'?`<span class="cdv">${c.cd??'∞'}</span>`:`<span class="stats"><span class="atk ${c.atk>(c.d.a||0)?'buffed':''}">${c.atk}</span><span class="hp ${c.hp<c.maxHp?'hurt':''} ${c.maxHp>(c.d.h||0)?'buffed':''}">${c.hp}</span></span>`;
+  return `<button class="${cl.join(' ')}" data-board="${c.uid}" data-uid="${c.uid}" style="--clsc:var(--${c.d.c})" aria-label="${esc(c.name)} ${c.d.t==='F'?c.atk+'/'+c.hp:''}"><span class="nm">${esc(c.name)}</span><span class="kws">${kws}</span>${body}</button>`;
+}
+function rowHTML(i){const p=P(i);let s='';for(let k=0;k<BOARD_MAX;k++)s+=p.board[k]?unitHTML(p.board[k]):'<div class="slot"></div>';return `<div class="row">${s}</div>`}
+function handHTML(){
+  const p=P(0);if(!p.hand.length)return '<span class="empty">手札はありません</span>';
+  return p.hand.map(c=>{const ec=effCost(p,c);const ok=canPlay(0,c)&&!G.busy;
+    return `<button class="hcard ${ok?'can':''} ${UI.sel&&UI.sel.uid===c.uid?'sel':''}" data-hand="${c.uid}" style="--clsc:var(--${c.d.c})" aria-label="${esc(c.name)} コスト${ec}">
+      <span class="cost ${ec!==c.cost?'enh':''}">${ec}</span><span class="rar r-${c.d.r}"></span><span class="nm">${esc(c.name)}</span>
+      ${c.d.t==='F'?`<span class="stats"><span class="atk ${c.atk>(c.d.a||0)?'buffed':''}">${c.atk}</span><span class="hp ${c.hp>(c.d.h||0)?'buffed':''}">${c.hp}</span></span>`:`<span class="ty">${TY[c.d.t]}</span>`}</button>`}).join('');
+}
+function abarHTML(){
+  if(G.busy)return `<p class="hint">CPU が考えています…</p>`;
+  if(UI.tgt)return `<div class="ab-card"><div class="ab-head"><b>対象を選んでください</b><span class="meta">${esc(UI.tgt.label)}</span></div><div class="ab-text">赤い点線のカードかリーダーをタップ</div></div><div class="ab-btns"><button class="btn ghost sm" data-act="cancel">キャンセル</button></div>`;
+  const c=selObj();
+  if(!c){const p=P(0);
+    return `<p class="hint">手札をタップして選び、もう一度タップかボタンでプレイ。緑枠のフォロワーを選んで、赤い点線の相手を攻撃。${p.turn<evoNeed(p,false)?`進化はあなたの${evoNeed(p,false)}ターン目から。`:''}</p>`}
+  const d=c.d;const me=c.owner===0;
+  let btns='',stats='';
+  if(d.t==='F')stats=`<span class="stats"><span class="atk">${c.atk}</span><span class="hp">${c.hp}</span></span>`;
+  if(d.t==='A'&&c.cd!=null)stats=`<span class="meta">カウント ${c.cd}</span>`;
+  if(UI.sel.kind==='hand'&&me){const why=playBlock(0,c);btns=`<button class="btn" data-act="play" ${why?'disabled':''}>プレイ</button>${why?`<span class="why">${why}</span>`:''}`}
+  if(UI.sel.kind==='board'&&me&&d.t==='F'&&G.active===0){
+    const w1=evoBlock(0,c,false),w2=evoBlock(0,c,true);
+    btns=`<button class="btn evo sm" data-act="evo" ${w1?'disabled':''} title="${w1}">進化 +2/+2</button><button class="btn sevo sm" data-act="sevo" ${w2?'disabled':''} title="${w2}">超進化 +3/+3</button>${w1&&w2?`<span class="why">${c.evolved?'進化済み':w1}</span>`:''}`;
+  }
+  const p=P(c.owner);
+  const ec=UI.sel.kind==='hand'?effCost(p,c):c.cost;
+  return `<div class="ab-card"><div class="ab-head"><span class="costgem">${ec}</span><b>${esc(c.name)}</b>${stats}<span class="meta">${CLS[d.c].n}・${TY[d.t]}・${RAR[d.r]}${c.evolved?(c.sevo?'・超進化':'・進化'):''}</span></div>
+    <div class="ab-text">${cardText(c)}</div></div>${btns?`<div class="ab-btns">${btns}</div>`:''}`;
+}
+function gameHTML(){
+  const me=G.active===0;const p=P(0);
+  const xp=canExtra(0)&&!G.busy?`<button class="btn xpp sm" data-act="xpp">エクストラPP +1</button>`:'';
+  const logs=G.log.map(l=>`<li class="${l.cls||''}">${esc(l.s)}</li>`).join('');
+  let over='';
+  if(G.over){const w=G.over.winner;const t=w===-1?'引き分け':w===0?'勝利':'敗北';
+    over=`<div class="overlay"><div class="modal result ${w===0?'win':'lose'}"><p class="eyebrow" style="text-align:center">${esc(G.over.reason)}</p><h2>${t}</h2><p>${G.turnNo} ターンで決着</p>
+      <div class="btnrow"><button class="btn" data-act="again">同じ組み合わせで再戦</button><button class="btn ghost" data-act="title">デッキ選択へ</button></div></div></div>`}
+  let mull='';
+  if(UI.mull){const first=G.first===0;
+    mull=`<div class="overlay"><div class="modal"><p class="eyebrow">${first?'あなたが先攻':'あなたが後攻'} ・ 相手：${DECKS[P(1).deckKey].name}</p><h2>マリガン</h2><p>引き直すカードを選んでください（何枚でも可、1回だけ）。</p>
+      <div class="mull">${p.hand.map(c=>`<button class="mcard" data-mull="${c.uid}" aria-pressed="${UI.mull.has(c.uid)}" style="--clsc:var(--${c.d.c})"><span class="costgem">${c.cost}</span><span class="nm">${esc(c.name)}</span><span class="tx">${cardText(c)}</span>${c.d.t==='F'?`<span class="stats"><span class="atk">${c.atk}</span><span class="hp">${c.hp}</span></span>`:''}</button>`).join('')}</div>
+      <div class="btnrow"><button class="btn big" data-act="mulldone">${UI.mull.size?UI.mull.size+'枚を交換して開始':'このまま開始'}</button></div></div></div>`}
+  return `<div class="game">
+   <main class="table">
+     ${leaderHTML(1)}
+     <section class="field">${rowHTML(1)}
+       <div class="mid"><div class="turninfo"><b class="${me?'mine':''}">${G.over?'対戦終了':me?'あなたのターン':'相手のターン'}</b><span>ターン ${G.turnNo}</span><span class="opt">コンボ ${P(G.active<0?0:G.active).combo}</span></div>
+         <div class="midbtns">${xp}<button class="btn ghost sm showlog" data-act="log">ログ</button><button class="btn ghost sm" data-act="rules">ルール</button><button class="btn ghost sm" data-act="surrender">投了</button>
+         <button class="btn end" data-act="end" ${!me||G.busy||G.over?'disabled':''}>ターン終了</button></div></div>
+       ${rowHTML(0)}</section>
+     <section class="abar" aria-live="polite">${abarHTML()}</section>
+     <section class="mybar">${leaderHTML(0)}<div class="hand">${handHTML()}</div></section>
+   </main>
+   <aside class="sidebar ${UI.log?'open':''}"><h3>バトルログ <button class="btn ghost sm showlog" data-act="log">閉じる</button></h3><ul class="log">${logs}</ul>
+     <div class="legend"><i>緑枠</i> 攻撃可能 ・ <i>赤点線</i> 対象 ・ <i>金枠</i> 進化 ・ <i>紫枠</i> 超進化（自分のターン中ダメージ無効）・ <i>召喚</i> 出たターン ・ <i>LW</i> ラストワード</div></aside>
+  </div>${mull}${over}${UI.rules?rulesHTML():''}${UI.confirm?confirmHTML():''}`;
+}
+function confirmHTML(){return `<div class="overlay"><div class="modal"><h2>投了しますか？</h2><p>この対戦は敗北になります。</p><div class="btnrow"><button class="btn" data-act="surrender-yes">投了する</button><button class="btn ghost" data-act="surrender-no">続ける</button></div></div></div>`}
+
+/* ================= flow ================= */
+let lastMatch=null;
+function newGame(pickKey,oppKey){
+  UID=0;
+  const ok=oppKey||(UI.opp==='random'?pick(Object.keys(DECKS)):UI.opp);
+  const pk=pickKey||UI.pick;lastMatch=[pk,ok];
+  G={p:[newPlayer(0,pk,'あなた'),newPlayer(1,ok,'CPU')],turnNo:0,active:-1,first:Math.random()<.5?0:1,log:[],fx:[],over:null,busy:false};
+  G.p[E(G.first)].second=true;
+  for(const p of G.p)for(let k=0;k<4;k++)p.hand.push(p.deck.pop());
+  log(`${G.first===0?'あなた':'CPU'} が先攻`,'t');
+  UI.screen='game';UI.sel=null;UI.tgt=null;UI.mull=new Set();UI.confirm=false;UI.rules=false;
+  render();
+}
+function finishMulligan(){
+  mulligan(0,P(0).hand.filter(c=>UI.mull.has(c.uid)));
+  const back=P(1).hand.filter(c=>c.cost>=5&&!c.d.enh);mulligan(1,back);
+  log(`あなたは${UI.mull.size}枚、CPUは${back.length}枚を引き直した`);
+  UI.mull=null;
+  startTurn(G.first);render();
+  if(!G.over&&G.active===1)aiTurn();
+}
+function doPlay(c){
+  if(G.busy||!canPlay(0,c))return;
+  const spec=c.d.tgt;
+  if(spec){const ts=targets(0,spec,c);if(ts.length){UI.tgt={mode:'play',card:c,valid:ts,label:c.name};UI.sel={kind:'hand',uid:c.uid};render();return}}
+  UI.sel=null;play(0,c,undefined);render();
+}
+function doEvolve(c,sup){
+  if(G.busy||!canEvolve(0,c,sup))return;
+  if(c.d.etgt){const ts=targets(0,c.d.etgt,c);if(ts.length){UI.tgt={mode:'evo',card:c,sup,valid:ts,label:`${c.name}（${sup?'超進化':'進化'}時）`};render();return}}
+  evolve(0,c,sup,false,undefined);render();
+}
+function resolveTgt(t){
+  const T=UI.tgt;UI.tgt=null;UI.sel=null;
+  if(T.mode==='play'){if(P(0).hand.includes(T.card)&&canPlay(0,T.card))play(0,T.card,t)}
+  else if(canEvolve(0,T.card,T.sup))evolve(0,T.card,T.sup,false,t);
+  render();
+}
+function clickObj(o){
+  if(UI.tgt){if(UI.tgt.valid.includes(o))resolveTgt(o);return true}
+  const s=selObj();
+  if(s&&UI.sel.kind==='board'&&s.owner===0&&o.owner===1&&G.active===0&&!G.busy&&atkTargets(s).includes(o)){attack(s,o);UI.sel=null;render();return true}
+  return false;
+}
+app.addEventListener('click',e=>{
+  const el=e.target.closest('[data-act],[data-hand],[data-board],[data-leader],[data-deck],[data-opp],[data-mull]');
+  if(!el)return;
+  if(el.dataset.act==='closerules'&&e.target.closest('[data-stop]')&&!e.target.closest('button'))return;
+  const a=el.dataset.act;
+  if(el.dataset.deck){UI.pick=el.dataset.deck;render();return}
+  if(el.dataset.opp){UI.opp=el.dataset.opp;render();return}
+  if(el.dataset.mull){const u=el.dataset.mull;UI.mull.has(u)?UI.mull.delete(u):UI.mull.add(u);render();return}
+  if(a){
+    switch(a){
+      case 'start':newGame();break;
+      case 'again':newGame(lastMatch[0],lastMatch[1]);break;
+      case 'title':G=null;UI.screen='title';render();break;
+      case 'rules':UI.rules=true;render();break;
+      case 'closerules':UI.rules=false;render();break;
+      case 'mulldone':finishMulligan();break;
+      case 'cancel':UI.tgt=null;render();break;
+      case 'log':UI.log=!UI.log;render();break;
+      case 'surrender':if(!G.over){UI.confirm=true;render()}break;
+      case 'surrender-no':UI.confirm=false;render();break;
+      case 'surrender-yes':UI.confirm=false;if(!G.over){G.over={winner:1,reason:'投了'};G.busy=false}render();break;
+      case 'play':{const c=selObj();if(c)doPlay(c);break}
+      case 'evo':case 'sevo':{const c=selObj();if(c)doEvolve(c,a==='sevo');break}
+      case 'xpp':if(canExtra(0)&&!G.busy){useExtra(0);render()}break;
+      case 'end':if(G.active===0&&!G.busy&&!G.over){UI.sel=null;UI.tgt=null;endTurn(0);render();if(!G.over&&G.active===1)aiTurn()}break;
+    }
+    return;
+  }
+  if(!G||G.over)return;
+  if(el.dataset.hand){
+    const c=find(el.dataset.hand);if(!c)return;
+    if(UI.tgt)return;
+    if(UI.sel&&UI.sel.uid===c.uid&&canPlay(0,c)&&!G.busy){doPlay(c);return}
+    UI.sel={kind:'hand',uid:c.uid};render();return;
+  }
+  if(el.dataset.board){
+    const c=find(el.dataset.board);if(!c)return;
+    if(clickObj(c))return;
+    UI.sel=(UI.sel&&UI.sel.uid===c.uid)?null:{kind:'board',uid:c.uid};render();return;
+  }
+  if(el.dataset.leader){const o=L(+el.dataset.leader);if(clickObj(o))return;UI.sel=null;render()}
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&UI.screen==='game'){UI.tgt=null;UI.sel=null;UI.rules=false;UI.confirm=false;render()}});
+render();
+</script>
