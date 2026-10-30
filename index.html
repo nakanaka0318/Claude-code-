@@ -1,0 +1,540 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+</head>
+<body>
+<!-- page -->
+<title>知識ガチャ</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: カプセルトイの筐体を左に、出てきたカードを右に。狭い画面では縦に積む */
+:root {
+  --bg: #e9eef2;
+  --ink: #17202e;
+  --muted: #5b6676;
+  --machine: #2348c9;
+  --machine-dark: #16308f;
+  --knob: #f5c518;
+  --paper: #ffffff;
+  --line: #cfd7e0;
+  --n: #8a96a8;
+  --r: #2f9e6f;
+  --sr: #8b4fd8;
+  --ssr: #e0a400;
+  --display: "Dela Gothic One", "Hiragino Sans", "Yu Gothic", sans-serif;
+  --body: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f141d; --ink: #e8edf4; --muted: #95a1b3; --machine: #3a63f0; --machine-dark: #22409f;
+    --knob: #f5c518; --paper: #1a2130; --line: #2c3548; --n: #8a96a8; --r: #45c28f; --sr: #ae7cf0; --ssr: #f2c230;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f141d; --ink: #e8edf4; --muted: #95a1b3; --machine: #3a63f0; --machine-dark: #22409f;
+  --knob: #f5c518; --paper: #1a2130; --line: #2c3548; --n: #8a96a8; --r: #45c28f; --sr: #ae7cf0; --ssr: #f2c230;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.7;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 24px 48px;
+}
+.wrap { max-width: 1040px; margin: 0 auto; display: grid; gap: 28px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 20px; }
+h1 { font-family: var(--display); font-weight: 400; font-size: clamp(30px, 6vw, 44px); line-height: 1.1; margin: 0; letter-spacing: .02em; }
+.sub { color: var(--muted); margin: 0; font-size: 14px; }
+.stage { display: grid; grid-template-columns: minmax(260px, 340px) 1fr; gap: 28px; align-items: start; }
+@media (max-width: 760px) { .stage { grid-template-columns: 1fr; } }
+
+/* 筐体 */
+.machine { background: var(--machine); border-radius: 22px 22px 14px 14px; padding: 18px; color: #fff; display: grid; gap: 14px; box-shadow: 0 10px 0 var(--machine-dark); }
+.dome { position: relative; aspect-ratio: 1 / .82; max-width: 100%; border-radius: 50% 50% 16px 16px / 60% 60% 16px 16px; background: radial-gradient(circle at 30% 25%, rgba(255,255,255,.55), rgba(255,255,255,.12) 45%, rgba(255,255,255,.06)); border: 3px solid rgba(255,255,255,.5); overflow: hidden; }
+.ball { position: absolute; width: 22%; aspect-ratio: 1; border-radius: 50%; border: 2px solid rgba(0,0,0,.18); background: linear-gradient(180deg, var(--c) 0 50%, #f4f4f4 50% 100%); transition: transform .5s; }
+.shake .ball { animation: jiggle .5s ease-in-out 2; }
+@keyframes jiggle { 25% { transform: translate(4px,-6px) rotate(12deg); } 75% { transform: translate(-4px,3px) rotate(-10deg); } }
+.panel { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.label { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; opacity: .85; }
+.price { font-family: var(--display); font-size: 20px; line-height: 1; }
+.knob { width: 74px; height: 74px; border-radius: 50%; background: var(--knob); border: 4px solid rgba(0,0,0,.18); position: relative; cursor: pointer; flex: none; transition: transform .6s cubic-bezier(.5,1.6,.5,1); }
+.knob::after { content: ""; position: absolute; left: 50%; top: 10px; bottom: 10px; width: 14px; margin-left: -7px; border-radius: 7px; background: rgba(0,0,0,.22); }
+.knob.turn { transform: rotate(360deg); }
+.knob:focus-visible, button:focus-visible { outline: 3px solid var(--knob); outline-offset: 3px; }
+.chute { height: 46px; border-radius: 10px; background: var(--machine-dark); display: grid; place-items: center; overflow: hidden; }
+.drop { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(180deg, var(--c, #fff) 0 50%, #f4f4f4 50% 100%); transform: translateY(-60px); }
+.drop.go { animation: fall .55s cubic-bezier(.3,1.4,.6,1) forwards; }
+@keyframes fall { to { transform: translateY(0); } }
+.btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+button { font: inherit; cursor: pointer; }
+.pull { border: 0; border-radius: 12px; padding: 12px 10px; font-family: var(--display); font-size: 17px; color: var(--ink); background: var(--knob); box-shadow: 0 4px 0 rgba(0,0,0,.25); }
+.pull.alt { background: #fff; color: var(--machine-dark); }
+.pull:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,.25); }
+.pull:disabled { opacity: .6; cursor: progress; }
+.status { font-size: 13px; min-height: 1.7em; color: rgba(255,255,255,.9); }
+
+/* カード */
+.result { display: grid; gap: 14px; min-width: 0; }
+.card { background: var(--paper); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; display: grid; min-width: 0; animation: pop .45s cubic-bezier(.2,1.4,.4,1); }
+@keyframes pop { from { transform: scale(.92) rotate(-1.5deg); opacity: .4; } }
+.card-top { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.rar { font-family: var(--display); font-size: 15px; line-height: 1; padding: 6px 9px 5px; border-radius: 8px; color: #fff; background: var(--rc); }
+.card[data-r="SSR"] { border: 2px solid var(--ssr); box-shadow: 0 0 0 4px color-mix(in srgb, var(--ssr) 22%, transparent); }
+.card[data-r="SR"] { border: 2px solid var(--sr); }
+.src { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.cat { margin-left: auto; font-size: 13px; color: var(--muted); }
+.card-img { width: 100%; max-height: 340px; object-fit: cover; display: block; background: var(--line); }
+.card-body { padding: 16px 18px 18px; display: grid; gap: 8px; min-width: 0; }
+.card-body h2 { font-family: var(--display); font-weight: 400; font-size: clamp(21px, 3.4vw, 28px); line-height: 1.3; margin: 0; text-wrap: balance; overflow-wrap: anywhere; }
+.card-body p { margin: 0; max-width: 65ch; overflow-wrap: anywhere; }
+.facts { display: grid; grid-template-columns: max-content 1fr; gap: 2px 14px; margin: 4px 0 0; font-size: 14px; }
+.facts dt { color: var(--muted); }
+.facts dd { margin: 0; font-variant-numeric: tabular-nums; min-width: 0; overflow-wrap: anywhere; }
+.more { font-size: 13px; color: var(--machine); font-weight: 700; text-decoration: none; justify-self: start; }
+.more:hover { text-decoration: underline; }
+.minis { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.mini { text-align: left; background: var(--paper); border: 1px solid var(--line); border-left: 5px solid var(--rc); border-radius: 10px; padding: 8px 10px; color: var(--ink); display: grid; gap: 2px; min-width: 0; }
+.mini b { font-weight: 700; font-size: 13px; line-height: 1.4; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.mini span { font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: .08em; }
+.mini[aria-current="true"] { outline: 2px solid var(--ink); }
+
+/* 図鑑 */
+.book { display: grid; gap: 12px; border-top: 2px solid var(--ink); padding-top: 18px; }
+.book-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px 16px; }
+.book h3 { font-family: var(--display); font-weight: 400; font-size: 22px; margin: 0; }
+.tally { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.tally i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--rc); margin-right: 5px; }
+.srcs { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-size: 12px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.chip[data-state="ok"] { color: var(--ink); border-color: var(--r); }
+.chip[data-state="off"] { text-decoration: line-through; opacity: .6; }
+.ghost { border: 1px solid var(--line); background: transparent; color: var(--muted); border-radius: 8px; padding: 4px 10px; font-size: 12px; }
+.empty { color: var(--muted); font-size: 14px; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>知識ガチャ</h1>
+    <p class="sub">ウィキペディア、美術館、宇宙、世界の国データなどから、1回ごとにランダムな知識を引きます。</p>
+  </header>
+
+  <section class="stage">
+    <div class="machine" id="machine">
+      <div class="dome" id="dome" aria-hidden="true"></div>
+      <div class="panel">
+        <div>
+          <div class="label">Knowledge Capsule</div>
+          <div class="price">1回 0円</div>
+        </div>
+        <button class="knob" id="knob" aria-label="ハンドルを回して1回引く"></button>
+      </div>
+      <div class="chute" aria-hidden="true"><div class="drop" id="drop"></div></div>
+      <div class="btns">
+        <button class="pull" id="pull1">1回引く</button>
+        <button class="pull alt" id="pull10">10連</button>
+      </div>
+      <div class="status" id="status" role="status">ハンドルを回すか、ボタンを押してください。</div>
+    </div>
+
+    <div class="result">
+      <div id="card"></div>
+      <div class="minis" id="minis" hidden></div>
+    </div>
+  </section>
+
+  <section class="book">
+    <div class="book-head">
+      <h3>図鑑</h3>
+      <div class="tally" id="tally"></div>
+    </div>
+    <div class="srcs" id="srcs"></div>
+    <div class="minis" id="history"></div>
+    <div><button class="ghost" id="reset">図鑑をリセット</button></div>
+  </section>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  // ---------- レア度 ----------
+  const RARITY = [
+    { id: "SSR", w: 3, color: "var(--ssr)" },
+    { id: "SR", w: 12, color: "var(--sr)" },
+    { id: "R", w: 30, color: "var(--r)" },
+    { id: "N", w: 55, color: "var(--n)" },
+  ];
+  const rcolor = id => RARITY.find(r => r.id === id).color;
+  function rollRarity(minSR) {
+    const pool = minSR ? RARITY.filter(r => r.id === "SSR" || r.id === "SR") : RARITY;
+    let x = Math.random() * pool.reduce((s, r) => s + r.w, 0);
+    for (const r of pool) { if ((x -= r.w) < 0) return r.id; }
+    return pool[pool.length - 1].id;
+  }
+
+  // ---------- 便利関数 ----------
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+  const randInt = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+  const fmt = n => Number(n).toLocaleString("ja-JP");
+  const strip = s => String(s || "").replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
+  const clip = (s, n) => (s.length > n ? s.slice(0, n - 1) + "…" : s);
+  async function getJSON(url, ms = 7000) {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), ms);
+    try {
+      const res = await fetch(url, { signal: ctl.signal, headers: { Accept: "application/json" } });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return await res.json();
+    } finally { clearTimeout(t); }
+  }
+
+  // ---------- 内蔵の雑学（オフライン時の補充用） ----------
+  const BUILTIN = [
+    ["生き物", "タコの心臓は3つ", "タコはエラに血液を送る心臓を2つ、全身に送る心臓を1つ持っています。血液は銅を含むタンパク質のため青色です。"],
+    ["宇宙", "金星では1日が1年より長い", "金星の自転周期は約243地球日、公転周期は約225地球日。しかも自転の向きが他の多くの惑星と逆です。"],
+    ["植物", "バナナはベリー、イチゴはベリーではない", "植物学上のベリー（液果）の定義では、バナナやトマトは含まれ、イチゴやラズベリーは含まれません。"],
+    ["建築", "エッフェル塔は夏に背が伸びる", "鉄は熱で膨張するため、暑い日にはエッフェル塔が十数センチ高くなることがあります。"],
+    ["人体", "大人の骨はおよそ206個", "赤ちゃんの骨は300個近くありますが、成長とともにいくつかが癒合して数が減ります。"],
+    ["生き物", "シャチはイルカの仲間", "シャチは分類上マイルカ科に属し、その中で最大の種です。"],
+    ["宇宙", "太陽の光は約8分20秒前のもの", "太陽と地球の距離は約1億5000万km。光の速さでも到着までに約8分20秒かかります。"],
+    ["言葉", "「ありがとう」の元は「有り難し」", "「有ることが難しい」、つまりめったにない、という意味の言葉が、感謝の表現へと変わっていきました。"],
+    ["日本", "日本の国鳥はキジ", "1947年に日本鳥学会がキジを国鳥に選びました。昔話『桃太郎』にも登場します。"],
+    ["科学", "富士山頂では水が約87℃で沸騰する", "標高が高いと気圧が下がり、沸点も下がります。山頂でご飯を炊くと芯が残りやすいのはこのためです。"],
+    ["生き物", "ウォンバットのフンは四角い", "ウォンバットは腸の壁の伸び縮みのしかたによって、立方体に近い形のフンをします。"],
+    ["地球", "地球の水の約97%は海水", "淡水は約2.5%で、その大部分は氷河や地下水。すぐ使える川や湖の水はごくわずかです。"],
+    ["人体", "人の体の細胞は約37兆個", "かつては60兆個とも言われましたが、2013年の研究で約37兆個という推定が出されました。"],
+    ["道具", "鉛筆のHBは Hard と Black", "Hは硬さ（Hard）、Bは黒さ（Black）。HBはその中間です。Fは Firm（しっかりした）の略です。"],
+    ["暦", "3月14日はアインシュタインの誕生日", "円周率の日（π = 3.14）として知られる3月14日は、アルベルト・アインシュタインの誕生日でもあります。"],
+    ["生き物", "キリンの首の骨は7個", "首の長さに関係なく、ほとんどの哺乳類の首の骨（頸椎）は7個。キリンは1つ1つが大きいのです。"],
+    ["宇宙", "月は毎年約3.8cmずつ遠ざかっている", "アポロ計画で月面に置かれた反射板にレーザーを当てて、距離の変化が測られています。"],
+    ["地球", "海の最深部は約1万900m", "マリアナ海溝のチャレンジャー海淵は、エベレストを沈めても2000m以上余る深さです。"],
+    ["生き物", "ナマケモノのトイレは週1回ほど", "ナマケモノは代謝がとても遅く、排泄のために木から降りるのは1週間に1回程度です。"],
+    ["お金", "1円玉の重さはちょうど1グラム", "1円玉はアルミニウム製で、直径20mm、重さ1g。理科の実験の分銅代わりにもなります。"],
+    ["交通", "東海道新幹線の開業は1964年10月1日", "東京オリンピック開幕の9日前に、東京〜新大阪間で営業運転が始まりました。"],
+    ["地球", "世界最大の砂漠は南極", "砂漠は降水量の少なさで定義されます。南極大陸は降水量が極めて少なく、面積でも最大の砂漠です。"],
+    ["気象", "雷は太陽の表面より熱い", "雷が通る空気は約3万℃に達します。太陽の表面温度（約6000℃）の5倍ほどです。"],
+    ["生き物", "道具を作るカラスがいる", "ニューカレドニアガラスは小枝や葉を加工してフックを作り、木の穴から虫を引き出します。"],
+    ["人体", "1つの細胞のDNAは約2メートル", "直径わずか数マイクロメートルの核の中に、伸ばすと約2mになるDNAが折りたたまれています。"],
+    ["植物", "ソメイヨシノはクローン", "ソメイヨシノは種ではなく接ぎ木で増やされてきたため、各地の木はほぼ同じ遺伝子を持っています。"],
+    ["宇宙", "国際宇宙ステーションは約90分で地球1周", "ISSは高度約400kmを秒速約7.7kmで飛び、1日に地球を約16周します。"],
+    ["宇宙", "冥王星は2006年に準惑星になった", "国際天文学連合が惑星の定義を決めたことで、冥王星は惑星から準惑星へと分類が変わりました。"],
+    ["生き物", "鳥は恐竜の子孫", "鳥類は獣脚類と呼ばれる恐竜のグループから進化しました。ティラノサウルスとも親戚です。"],
+    ["言葉", "「サラリー」と塩", "英語の salary はラテン語の salarium に由来し、塩（sal）と関係があると考えられています。"],
+  ];
+
+  // ---------- 情報源 ----------
+  // 各ソースは card を返す: {source, category, title, text, img?, facts?, url?}
+  const today = new Date();
+  const mm = String(today.getMonth() + 1).padStart(2, "0");
+  const dd = String(today.getDate()).padStart(2, "0");
+  let countriesCache = null;
+
+  const SOURCES = [
+    {
+      id: "wikipedia", name: "Wikipedia", async get() {
+        const d = await getJSON("https://ja.wikipedia.org/api/rest_v1/page/random/summary");
+        if (!d.extract) throw new Error("empty");
+        return {
+          category: "百科事典", title: d.title, text: clip(d.extract, 360),
+          img: d.thumbnail && d.thumbnail.source, url: d.content_urls && d.content_urls.desktop.page,
+        };
+      },
+    },
+    {
+      id: "onthisday", name: "Wikipedia 今日は何の日", async get() {
+        let list = [];
+        for (const lang of ["ja", "en"]) {
+          try {
+            const d = await getJSON(`https://api.wikimedia.org/feed/v1/wikipedia/${lang}/onthisday/selected/${mm}/${dd}`);
+            list = (d.selected || []).concat(d.events || []);
+            if (list.length) break;
+          } catch (e) { /* 次の言語へ */ }
+        }
+        if (!list.length) throw new Error("empty");
+        const ev = pick(list);
+        const page = (ev.pages || [])[0] || {};
+        return {
+          category: `${+mm}月${+dd}日の出来事`, title: `${ev.year}年`, text: strip(ev.text),
+          img: page.thumbnail && page.thumbnail.source,
+          url: page.content_urls && page.content_urls.desktop.page,
+        };
+      },
+    },
+    {
+      id: "countries", name: "REST Countries", async get() {
+        if (!countriesCache) {
+          countriesCache = await getJSON("https://restcountries.com/v3.1/all?fields=name,translations,capital,population,region,subregion,area,flag,languages,currencies");
+        }
+        const c = pick(countriesCache);
+        const ja = c.translations && c.translations.jpn && c.translations.jpn.common;
+        const cur = Object.values(c.currencies || {}).map(x => x.name).join("、");
+        const facts = [
+          ["首都", (c.capital || []).join("、") || "—"],
+          ["地域", [c.region, c.subregion].filter(Boolean).join(" / ")],
+          ["人口", c.population ? fmt(c.population) + " 人" : "—"],
+          ["面積", c.area ? fmt(Math.round(c.area)) + " km²" : "—"],
+          ["言語", Object.values(c.languages || {}).join("、") || "—"],
+          ["通貨", cur || "—"],
+        ];
+        const dens = c.area && c.population ? Math.round(c.population / c.area) : null;
+        return {
+          category: "世界の国", title: `${c.flag || ""} ${ja || c.name.common}`.trim(),
+          text: `正式名称は ${c.name.official}。` + (dens !== null ? `人口密度はおよそ 1km² あたり ${fmt(dens)} 人です。` : ""),
+          facts,
+        };
+      },
+    },
+    {
+      id: "artic", name: "シカゴ美術館", async get() {
+        const page = randInt(1, 100);
+        const d = await getJSON(`https://api.artic.edu/api/v1/artworks/search?query[term][is_public_domain]=true&limit=1&page=${page}&fields=id,title,artist_display,date_display,medium_display,place_of_origin,image_id,short_description`);
+        const a = d.data && d.data[0];
+        if (!a) throw new Error("empty");
+        const iiif = (d.config && d.config.iiif_url) || "https://www.artic.edu/iiif/2";
+        return {
+          category: "美術作品", title: a.title,
+          text: a.short_description ? strip(a.short_description) : "シカゴ美術館が所蔵する、パブリックドメインの作品です。",
+          img: a.image_id ? `${iiif}/${a.image_id}/full/843,/0/default.jpg` : null,
+          facts: [["作者", a.artist_display || "不明"], ["制作年", a.date_display || "—"], ["素材", a.medium_display || "—"], ["制作地", a.place_of_origin || "—"]],
+          url: `https://www.artic.edu/artworks/${a.id}`,
+        };
+      },
+    },
+    {
+      id: "apod", name: "NASA APOD", async get() {
+        const d = await getJSON("https://api.nasa.gov/planetary/apod?api_key=DEMO_KEY&count=1&thumbs=true", 9000);
+        const a = Array.isArray(d) ? d[0] : d;
+        if (!a || !a.title) throw new Error("empty");
+        return {
+          category: "宇宙の写真（英語）", title: a.title, text: clip(a.explanation || "", 420),
+          img: a.media_type === "image" ? a.url : a.thumbnail_url,
+          facts: [["日付", a.date], ["クレジット", strip(a.copyright) || "NASA"]],
+          url: `https://apod.nasa.gov/apod/ap${a.date.slice(2).replace(/-/g, "")}.html`,
+        };
+      },
+    },
+    {
+      id: "uselessfacts", name: "Useless Facts", async get() {
+        const d = await getJSON("https://uselessfacts.jsph.pl/api/v2/facts/random?language=en");
+        if (!d.text) throw new Error("empty");
+        return { category: "英語の雑学", title: "Did you know?", text: d.text, url: d.source_url };
+      },
+    },
+  ];
+
+  // Claude に聞くソース（claude.ai の Artifact として開いたときだけ有効）
+  const TOPICS = ["生物", "天文学", "地理", "歴史", "言語・語源", "数学", "化学", "人体", "発明", "食べ物", "音楽", "建築", "スポーツ", "気象", "日本の文化"];
+  const claudeSource = {
+    id: "claude", name: "Claude", sample: null, queue: Promise.resolve(),
+    get() {
+      // 10連でも同時に投げず、1件ずつ順番に聞く
+      const run = this.queue.then(() => this.ask());
+      this.queue = run.catch(() => {});
+      return run;
+    },
+    async ask() {
+      const topic = pick(TOPICS);
+      const v = await this.sample.json(
+        `「${topic}」の分野から、意外性があり、事実として確かな雑学を1つ選んでください。` +
+        `よく知られすぎた定番は避けてください。日本語で、次のJSONだけを返してください: ` +
+        `{"title": "20字以内の見出し", "text": "120字前後の説明"}`,
+        { modelTier: "quick", cache: false }
+      );
+      if (!v || !v.title) throw new Error("empty");
+      return { category: topic, title: String(v.title), text: String(v.text || "") };
+    },
+  };
+
+  const builtinSource = {
+    id: "builtin", name: "内蔵雑学", async get() {
+      const [category, title, text] = pick(BUILTIN);
+      return { category, title, text };
+    },
+  };
+
+  // ソースの状態: 連続で失敗したものは今回のセッションでは休ませる
+  const health = {};
+  for (const s of SOURCES.concat(claudeSource, builtinSource)) health[s.id] = { fail: 0, ok: 0 };
+  const active = () => SOURCES.concat(claudeSource.sample ? [claudeSource] : []).filter(s => health[s.id].fail < 2);
+
+  async function draw(rarity) {
+    const tried = new Set();
+    while (true) {
+      const cand = active().filter(s => !tried.has(s.id));
+      if (!cand.length) break;
+      const s = pick(cand);
+      tried.add(s.id);
+      try {
+        const c = await s.get();
+        health[s.id].ok++; health[s.id].fail = 0;
+        renderSources();
+        return { ...c, source: s.name, sourceId: s.id, rarity, at: Date.now() };
+      } catch (e) {
+        health[s.id].fail++;
+        renderSources();
+      }
+    }
+    const c = await builtinSource.get();
+    health.builtin.ok++;
+    return { ...c, source: builtinSource.name, sourceId: "builtin", rarity, at: Date.now() };
+  }
+
+  // ---------- 図鑑（ブラウザに保存） ----------
+  const KEY = "knowledge-gacha-v1";
+  let book = [];
+  try { book = JSON.parse(localStorage.getItem(KEY) || "[]"); } catch (e) { book = []; }
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(book.slice(0, 300))); } catch (e) { /* 保存できない環境 */ } };
+
+  // ---------- 描画 ----------
+  const $ = id => document.getElementById(id);
+  const el = (tag, attrs = {}, ...kids) => {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (k === "style") n.style.cssText = v; else if (k in n && k !== "list") n[k] = v; else n.setAttribute(k, v);
+    }
+    for (const k of kids) if (k != null) n.append(k);
+    return n;
+  };
+
+  function renderCard(c) {
+    const box = $("card");
+    box.replaceChildren();
+    const body = el("div", { className: "card-body" }, el("h2", { textContent: c.title }));
+    if (c.text) body.append(el("p", { textContent: c.text }));
+    if (c.facts) {
+      const dl = el("dl", { className: "facts" });
+      for (const [k, v] of c.facts) dl.append(el("dt", { textContent: k }), el("dd", { textContent: v }));
+      body.append(dl);
+    }
+    if (c.url) body.append(el("a", { className: "more", href: c.url, target: "_blank", rel: "noopener", textContent: "出典を開く ↗" }));
+    const img = c.img ? el("img", { className: "card-img", src: c.img, alt: c.title, loading: "lazy" }) : null;
+    if (img) img.onerror = () => img.remove();
+    box.append(el("article", { className: "card", "data-r": c.rarity, style: `--rc:${rcolor(c.rarity)}` },
+      el("div", { className: "card-top" },
+        el("span", { className: "rar", textContent: c.rarity }),
+        el("span", { className: "src", textContent: c.source }),
+        el("span", { className: "cat", textContent: c.category || "" })),
+      img, body));
+  }
+
+  function miniButton(c, onClick) {
+    const b = el("button", { className: "mini", style: `--rc:${rcolor(c.rarity)}` },
+      el("span", { textContent: `${c.rarity} · ${c.source}` }), el("b", { textContent: c.title }));
+    b.addEventListener("click", onClick);
+    return b;
+  }
+
+  function renderMinis(cards) {
+    const box = $("minis");
+    box.replaceChildren();
+    box.hidden = cards.length < 2;
+    cards.forEach((c, i) => {
+      const b = miniButton(c, () => {
+        renderCard(c);
+        box.querySelectorAll(".mini").forEach(m => m.removeAttribute("aria-current"));
+        b.setAttribute("aria-current", "true");
+      });
+      if (i === 0) b.setAttribute("aria-current", "true");
+      box.append(b);
+    });
+  }
+
+  function renderBook() {
+    const tally = $("tally");
+    tally.replaceChildren(el("span", { textContent: `${book.length} 枚` }));
+    for (const r of RARITY) {
+      const n = book.filter(c => c.rarity === r.id).length;
+      tally.append(el("span", { style: `--rc:${r.color}` }, el("i"), `${r.id} ${n}`));
+    }
+    const hist = $("history");
+    hist.replaceChildren();
+    if (!book.length) { hist.append(el("p", { className: "empty", textContent: "まだ何も引いていません。引いた知識はここに貯まります。" })); return; }
+    for (const c of book.slice(0, 60)) hist.append(miniButton(c, () => { renderCard(c); $("card").scrollIntoView({ behavior: "smooth", block: "nearest" }); }));
+  }
+
+  function renderSources() {
+    const box = $("srcs");
+    box.replaceChildren(el("span", { className: "chip", textContent: "情報源:" }));
+    const list = SOURCES.concat(claudeSource.sample ? [claudeSource] : [], builtinSource);
+    for (const s of list) {
+      const h = health[s.id];
+      const state = h.fail >= 2 ? "off" : h.ok ? "ok" : "";
+      box.append(el("span", { className: "chip", "data-state": state, title: state === "off" ? "この環境からは取得できませんでした" : "", textContent: s.name }));
+    }
+  }
+
+  // 筐体の中のカプセル
+  const CAPS = ["#ff6b6b", "#f5c518", "#4dd4ac", "#ff9f43", "#a37cf0", "#54a0ff", "#ff7eb6"];
+  function fillDome() {
+    const dome = $("dome");
+    dome.replaceChildren();
+    const spots = [[6,62],[26,66],[46,64],[66,63],[16,44],[36,46],[56,44],[74,45],[28,26],[48,25],[64,28],[10,25]];
+    for (const [x, y] of spots) dome.append(el("div", { className: "ball", style: `left:${x}%;top:${y}%;--c:${pick(CAPS)};transform:rotate(${randInt(-40, 40)}deg)` }));
+  }
+
+  // ---------- ガチャを回す ----------
+  let busy = false;
+  async function pull(n) {
+    if (busy) return;
+    busy = true;
+    ["pull1", "pull10", "knob"].forEach(id => ($(id).disabled = true));
+    const status = $("status");
+    status.textContent = n === 1 ? "カプセルを取り出しています…" : "10個のカプセルを取り出しています…";
+    const knob = $("knob"), dome = $("dome"), drop = $("drop");
+    knob.classList.remove("turn"); void knob.offsetWidth; knob.classList.add("turn");
+    dome.classList.add("shake");
+
+    const rar = Array.from({ length: n }, () => rollRarity(false));
+    if (n === 10 && !rar.some(r => r === "SR" || r === "SSR")) rar[9] = rollRarity(true); // 10連は SR 以上を1枚保証
+    const cards = await Promise.all(rar.map(r => draw(r)));
+    const best = cards.reduce((a, c) => (RARITY.findIndex(r => r.id === c.rarity) < RARITY.findIndex(r => r.id === a.rarity) ? c : a), cards[0]);
+
+    drop.style.setProperty("--c", best.rarity === "SSR" ? "#f5c518" : best.rarity === "SR" ? "#a37cf0" : pick(CAPS));
+    drop.classList.remove("go"); void drop.offsetWidth; drop.classList.add("go");
+    dome.classList.remove("shake");
+
+    book = cards.slice().reverse().concat(book);
+    save();
+    const order = n === 1 ? cards : [best].concat(cards.filter(c => c !== best));
+    renderCard(order[0]);
+    renderMinis(n === 1 ? [] : order);
+    renderBook();
+    status.textContent = best.rarity === "SSR" ? "SSR が出ました！" : n === 1 ? `${best.rarity} を引きました。` : `最高レア: ${best.rarity}`;
+    ["pull1", "pull10", "knob"].forEach(id => ($(id).disabled = false));
+    busy = false;
+  }
+
+  $("pull1").addEventListener("click", () => pull(1));
+  $("knob").addEventListener("click", () => pull(1));
+  $("pull10").addEventListener("click", () => pull(10));
+  let armed = false;
+  $("reset").addEventListener("click", e => {
+    if (!armed) { armed = true; e.target.textContent = "もう一度押すと消去します"; setTimeout(() => { armed = false; e.target.textContent = "図鑑をリセット"; }, 3000); return; }
+    armed = false; e.target.textContent = "図鑑をリセット";
+    book = []; save(); renderBook();
+  });
+
+  // 初期表示: 内蔵の雑学を1枚見本として出す（図鑑には入れない）
+  fillDome();
+  const [category, title, text] = pick(BUILTIN);
+  renderCard({ category, title, text, source: "見本", rarity: "N" });
+  renderBook();
+  renderSources();
+
+  // claude.ai の Artifact で開いたときは Claude を情報源に追加
+  if (window.claude && typeof window.claude.use === "function") {
+    window.claude.use("sample").then(s => { if (s) { claudeSource.sample = s; renderSources(); } }).catch(() => {});
+  }
+})();
+</script>
+<!-- /page -->
+</body>
+</html>
